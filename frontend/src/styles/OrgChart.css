@@ -1,0 +1,150 @@
+.org-chart-wrapper {
+  display: flex;
+  justify-content: center;
+  padding: 20px;
+  overflow-x: auto;
+  min-width: max-content;
+}
+
+.org-node-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  padding: 20px 5px 0 5px;
+  transition: all 0.3s;
+}
+
+/* Kẻ line từ trên xuống */
+.org-node-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  border-left: 2px solid #ccc;
+  width: 0;
+  height: 20px;
+}
+
+/* Riêng node gốc không có line chĩa lên */
+.org-chart-wrapper > .org-node-container::before {
+  display: none;
+}
+
+.org-node {
+  background: #fff;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 180px;
+  z-index: 1;
+  transition: transform 0.2s, box-shadow 0.2s;
+  cursor: default;
+}
+
+.org-node:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 16px rgba(0,0,0,0.12);
+  border-color: #1677ff;
+}
+
+.org-node-info {
+  margin-top: 12px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.org-name {
+  font-size: 14px;
+  color: #1f2937;
+}
+
+.org-title {
+  font-size: 12px;
+  color: #1677ff;
+  font-weight: 500;
+}
+
+.org-dept {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+/* Các con */
+.org-children {
+  display: flex;
+  justify-content: center;
+  position: relative;
+  padding-top: 20px;
+}
+
+/* Line ngang kết nối các con */
+.org-children::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  border-left: 2px solid #ccc;
+  width: 0;
+  height: 20px;
+}
+
+.org-node-container:has(> .org-children)::after {
+  content: '';
+  position: absolute;
+  bottom: -20px; /* trỏ xuống khối con */
+  left: 50%;
+  border-left: 2px solid #ccc;
+  width: 0;
+  height: 20px;
+}
+
+/* Kẻ line ngang cho các nhánh */
+.org-children {
+  display: flex;
+  position: relative;
+}
+.org-children::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  border-top: 2px solid #ccc;
+}
+
+/* Loại bỏ line ngang dư thừa ở 2 đầu */
+.org-node-container:first-child::before {
+  left: 50%;
+}
+.org-node-container:last-child::before {
+  right: 50%;
+}
+
+.org-children > .org-node-container:first-child::before {
+  left: 50%;
+  border-top: 2px solid #ccc;
+}
+
+/* Cách CSS Tree đơn giản */
+.org-children {
+  padding-top: 20px;
+  position: relative;
+  transition: all 0.5s;
+}
+
+.org-children::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  border-left: 2px solid #ccc;
+  width: 0;
+  height: 20px;
+}

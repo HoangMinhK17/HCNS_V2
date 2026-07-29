@@ -1,0 +1,18 @@
+.att-page { padding: 24px 28px; }
+
+.att-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+}
+
+.att-emp-cell { display: flex; align-items: center; gap: 10px; }
+.att-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; color: #fff; font-size: 13px; flex-shrink: 0;
+}
+
+.row-absent td { background: rgba(239,68,68,0.04) !important; }
+.row-leave td  { background: rgba(99,102,241,0.04) !important; }

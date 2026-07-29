@@ -1,0 +1,75 @@
+/* ===== Base.vn Sync Page ===== */
+
+/* Info alert bar */
+.basevn-info-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #eff6ff;
+  border: 1px solid #dbeafe;
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-size: 13px;
+  color: #1d4ed8;
+  font-weight: 500;
+  margin-bottom: 22px;
+  line-height: 1.5;
+}
+
+/* Base.vn connected badge (top right) */
+.basevn-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #f0fdf4;
+  border: 1.5px solid #86efac;
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #166534;
+}
+
+.basevn-badge__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #22c55e;
+  display: inline-block;
+  margin: 0 4px;
+  animation: pulse-dot 1.8s infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(0.75); }
+}
+
+/* Empty state inside preview card */
+.basevn-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 32px;
+  text-align: center;
+  gap: 6px;
+  color: #9ca3af;
+}
+
+/* Ant Steps override for vertical small */
+.ant-steps-item-description {
+  font-size: 11.5px !important;
+}
+
+/* Row hover */
+.hover-row:hover td {
+  background: #f5f7ff !important;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .import-layout {
+    grid-template-columns: 1fr;
+  }
+}

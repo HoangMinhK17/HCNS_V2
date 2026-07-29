@@ -1,0 +1,187 @@
+/* CheckinPortal.css */
+
+.checkin-portal {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 24px 16px 40px;
+  min-height: calc(100vh - 60px);
+}
+
+.checkin-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+}
+
+/* ── Header Clock ──────────────────────────────────────────── */
+.checkin-header {
+  text-align: center;
+  padding: 32px 0 24px;
+  background: linear-gradient(135deg, #1677ff 0%, #6366f1 100%);
+  border-radius: 20px;
+  color: #fff;
+  margin-bottom: 20px;
+  box-shadow: 0 8px 32px rgba(22, 119, 255, 0.3);
+}
+
+.checkin-clock {
+  font-size: 52px;
+  font-weight: 800;
+  letter-spacing: -2px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.checkin-date {
+  font-size: 14px;
+  margin-top: 8px;
+  opacity: 0.85;
+  font-weight: 400;
+}
+
+/* ── Body ──────────────────────────────────────────────────── */
+.checkin-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ── Status Card ───────────────────────────────────────────── */
+.checkin-status-card {
+  border-radius: 16px !important;
+  background: #fff !important;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06) !important;
+}
+
+.checkin-status-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.checkin-status-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+.dot-green { background: #10b981; box-shadow: 0 0 0 4px rgba(16,185,129,0.2); }
+.dot-gray  { background: #d1d5db; }
+
+.checkin-times {
+  margin-top: 6px;
+  font-size: 13px;
+  color: #4b5563;
+}
+
+/* ── Step Cards ────────────────────────────────────────────── */
+.checkin-step-card {
+  border-radius: 16px !important;
+  background: #fff !important;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06) !important;
+}
+
+.step-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.step-num {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1677ff, #6366f1);
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.step-status-icon {
+  margin-left: auto;
+  font-size: 20px;
+}
+
+/* ── Camera ────────────────────────────────────────────────── */
+.camera-container {
+  position: relative;
+  margin-top: 12px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #000;
+  aspect-ratio: 4/3;
+  max-height: 240px;
+}
+
+.camera-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1); /* Mirror */
+}
+
+.camera-captured {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.camera-face-guide {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 140px;
+  height: 180px;
+  border: 2px dashed rgba(255,255,255,0.6);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* ── Action Buttons ────────────────────────────────────────── */
+.checkin-actions {
+  margin-top: 8px;
+}
+
+.btn-checkin {
+  width: 100% !important;
+  height: 56px !important;
+  font-size: 18px !important;
+  font-weight: 700 !important;
+  border-radius: 14px !important;
+  background: linear-gradient(135deg, #1677ff, #6366f1) !important;
+  border: none !important;
+  box-shadow: 0 6px 20px rgba(22,119,255,0.35) !important;
+  letter-spacing: 2px;
+  transition: transform 0.15s, box-shadow 0.15s !important;
+}
+.btn-checkin:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(22,119,255,0.45) !important;
+}
+
+.btn-checkout {
+  width: 100% !important;
+  height: 56px !important;
+  font-size: 18px !important;
+  font-weight: 700 !important;
+  border-radius: 14px !important;
+  background: linear-gradient(135deg, #f59e0b, #ef4444) !important;
+  border: none !important;
+  color: #fff !important;
+  box-shadow: 0 6px 20px rgba(245,158,11,0.35) !important;
+  letter-spacing: 2px;
+  transition: transform 0.15s, box-shadow 0.15s !important;
+}
+.btn-checkout:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(245,158,11,0.45) !important;
+}

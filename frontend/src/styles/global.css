@@ -1,0 +1,177 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #f5f6fa;
+  margin: 0;
+}
+
+#root {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  text-align: left;
+  border: none;
+  min-height: 100svh;
+  display: block;
+}
+
+/* Override antd layout */
+.ant-layout { background: #f5f6fa !important; }
+.ant-layout-sider { background: #ffffff !important; }
+.ant-menu-light { background: #ffffff !important; }
+
+/* Custom scan bar pulse */
+.cron-pulse {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #1677ff;
+  animation: pulseDot 1.5s ease-in-out infinite;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+@keyframes pulseDot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+/* Stat card hover */
+.stat-card-hover {
+  transition: box-shadow 0.2s, transform 0.2s;
+  cursor: default;
+}
+.stat-card-hover:hover {
+  box-shadow: 0 6px 20px rgba(0,0,0,0.1) !important;
+  transform: translateY(-2px);
+}
+
+/* Donut chart */
+.donut-wrapper {
+  position: relative;
+  width: 170px;
+  height: 170px;
+  flex-shrink: 0;
+}
+.donut-wrapper svg { transform: rotate(-90deg); }
+.donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.donut-center-val {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1f2937;
+  line-height: 1;
+}
+.donut-center-lbl {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-top: 2px;
+}
+
+/* Activity */
+.activity-list { display: flex; flex-direction: column; gap: 0; }
+.activity-item {
+  display: flex;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+.activity-item:last-child { border-bottom: none; }
+.activity-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* Upload dropzone */
+.upload-dropzone {
+  border: 2px dashed #d1d5db;
+  border-radius: 12px;
+  padding: 40px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-height: 200px;
+  gap: 8px;
+}
+.upload-dropzone:hover,
+.upload-dropzone.dragging {
+  border-color: #1677ff;
+  background: #eff6ff;
+}
+.upload-dropzone__icon {
+  width: 54px;
+  height: 54px;
+  background: #f3f4f6;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  color: #9ca3af;
+  margin-bottom: 8px;
+  transition: all 0.2s;
+}
+.upload-dropzone:hover .upload-dropzone__icon {
+  background: #dbeafe;
+  color: #1677ff;
+}
+
+/* Step indicator */
+.step-indicator {
+  display: flex;
+  align-items: center;
+  margin-bottom: 24px;
+}
+.step-item { display: flex; align-items: center; gap: 8px; }
+.step-circle {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; flex-shrink: 0;
+  transition: all 0.2s;
+}
+.step-circle.done { background: #059669; color: #fff; }
+.step-circle.active { background: #1677ff; color: #fff; box-shadow: 0 0 0 4px rgba(22,119,255,0.2); }
+.step-circle.pending { background: #f3f4f6; color: #9ca3af; border: 2px solid #e5e7eb; }
+.step-label { font-size: 12.5px; font-weight: 600; color: #6b7280; white-space: nowrap; }
+.step-label.active { color: #1677ff; }
+.step-label.done { color: #059669; }
+.step-connector { flex: 1; height: 2px; background: #e5e7eb; margin: 0 8px; min-width: 24px; }
+.step-connector.done { background: #059669; }
+
+/* renewal grid */
+.renewal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+
+/* Preview table date danger */
+.date-danger { color: #dc2626; font-weight: 600; }
+.date-normal { color: #374151; font-weight: 600; }
+
+/* Emp cell */
+.emp-cell { display: flex; align-items: center; gap: 12px; }
+.emp-initials {
+  width: 40px; height: 40px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 14px; color: #fff;
+  flex-shrink: 0;
+}

@@ -1,0 +1,9 @@
+
+node_modules
+dist
+.env
+
+# Puppeteer temporary session files
+puppeteer_data/
+puppeteer_profile/
+puppeteer_session/
