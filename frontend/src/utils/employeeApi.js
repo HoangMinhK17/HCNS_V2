@@ -73,6 +73,11 @@ const getBirthdays = async (days = 30) => {
     const response = await api.get(`/employees/birthday?days=${days}`);
     return response.data;
 };
+const syncHRM = async () => {
+    const response = await api.post("/scrape/syncHRM");
+    return response.data;
+};
+
 export {
     getEmployees,
     getAllEmployeesForDropdown,
@@ -87,5 +92,6 @@ export {
     downloadTemplate,
     importEmployees,
     getOrgChart,
-    getBirthdays
+    getBirthdays,
+    syncHRM
 };

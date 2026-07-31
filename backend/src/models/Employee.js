@@ -50,7 +50,7 @@ const EmployeeSchema = new mongoose.Schema(
     empCode: { type: String, required: true, unique: true, trim: true },
     status: {
       type: String,
-      enum: ["active", "probation", "maternity-leave", "inactive", "terminated"],
+      enum: ["Pre-Onboarding", "active", "probation", "maternity-leave", "inactive", "terminated"],
       default: "active",
     },
 

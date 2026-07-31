@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Table, Typography, Space, Button, Tag, Input, message, Modal, Form, Select, Popconfirm, Tabs, Descriptions } from 'antd';
-import { PlusOutlined, SearchOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
-import { getEmployees, createEmployee, updateEmployee, deleteEmployee, getAllEmployeesForDropdown } from '../../utils/employeeApi';
+import { PlusOutlined, SearchOutlined, EditOutlined, DeleteOutlined, EyeOutlined, SyncOutlined } from '@ant-design/icons';
+import { getEmployees, createEmployee, updateEmployee, deleteEmployee, getAllEmployeesForDropdown, syncHRM } from '../../utils/employeeApi';
 import { getAllDepartments } from '../../utils/departmentApi';
 import { getAllPositions } from '../../utils/positionApi';
 import { getAllCompanies } from '../../utils/companyApi';
@@ -10,6 +10,7 @@ const { Title } = Typography;
 const { Option } = Select;
 
 const STATUS_MAP = {
+  'Pre-Onboarding': 'Thực tập sinh',
   active: 'Đang làm việc',
   probation: 'Thử việc',
   'maternity-leave': 'Nghỉ thai sản',
@@ -49,6 +50,7 @@ export default function EmployeesList() {
 
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [viewingEmployee, setViewingEmployee] = useState(null);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const [form] = Form.useForm();
 
@@ -183,6 +185,23 @@ export default function EmployeesList() {
     }
   };
 
+  const handleSyncHRM = async () => {
+    setIsSyncing(true);
+    try {
+      const res = await syncHRM();
+      if (res.success) {
+        message.success(res.message || 'Đồng bộ HRM thành công!');
+        fetchData();
+      } else {
+        message.error(res.message || 'Lỗi đồng bộ HRM');
+      }
+    } catch (error) {
+      message.error('Không thể kết nối đến server để đồng bộ.');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const columns = [
     { title: 'STT', dataIndex: 'stt', key: 'stt', render: (text, record, index) => { return (pagination.current - 1) * pagination.pageSize + index + 1 } },
     { title: 'Mã NV', dataIndex: 'empCode', key: 'empCode', render: text => <strong>{text}</strong> },
@@ -190,11 +209,13 @@ export default function EmployeesList() {
     { title: 'Phòng ban', key: 'department', render: (_, record) => record.department?.name || '—' },
     { title: 'Chức danh', key: 'position', render: (_, record) => record.position?.name || '—' },
     {
-      title: 'Trạng thái', dataIndex: 'status', key: 'status', render: status => (
-        <Tag color={status === 'active' ? 'blue' : (status === 'inactive' ? 'red' : 'orange')}>
-          {status === 'active' ? 'Đang làm việc' : (status === 'inactive' ? 'Đã nghỉ việc' : 'Khác')}
-        </Tag>
-      )
+      title: 'Trạng thái', dataIndex: 'status', key: 'status', render: status => {
+        let color = 'orange';
+        if (status === 'active') color = 'blue';
+        else if (status === 'inactive' || status === 'terminated') color = 'red';
+        else if (status === 'probation' || status === 'Pre-Onboarding') color = 'cyan';
+        return <Tag color={color}>{STATUS_MAP[status] || status}</Tag>;
+      }
     },
     {
       title: 'Thao tác', key: 'action', render: (_, record) => (
@@ -213,7 +234,12 @@ export default function EmployeesList() {
     <div style={{ padding: 24, background: '#f5f5f5', minHeight: '100vh' }}>
       <Card
         title={<Title level={4} style={{ margin: 0 }}>Danh sách Nhân viên</Title>}
-        extra={<Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenModal()}>Thêm mới</Button>}
+        extra={
+          <Space>
+            <Button type="default" icon={<SyncOutlined />} onClick={handleSyncHRM} loading={isSyncing}>Đồng bộ HRM</Button>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenModal()}>Thêm mới</Button>
+          </Space>
+        }
         style={{ borderRadius: 12, boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}
       >
         <div style={{ marginBottom: 16, display: 'flex', gap: 16 }}>
@@ -230,6 +256,7 @@ export default function EmployeesList() {
             onChange={(value) => setStatusFilter(value)}
           >
             <Option value="active">Đang làm việc</Option>
+            <Option value="Pre-Onboarding">Thực tập sinh</Option>
             <Option value="probation">Thử việc</Option>
             <Option value="maternity-leave">Nghỉ thai sản</Option>
             <Option value="suspended">Đình chỉ</Option>
@@ -300,6 +327,7 @@ export default function EmployeesList() {
                 <Form.Item name="status" label="Trạng thái" initialValue="active">
                   <Select>
                     <Option value="active">Đang làm việc</Option>
+                    <Option value="Pre-Onboarding">Pre-Onboarding</Option>
                     <Option value="probation">Thử việc</Option>
                     <Option value="maternity-leave">Nghỉ thai sản</Option>
                     <Option value="suspended">Đình chỉ</Option>

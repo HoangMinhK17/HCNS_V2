@@ -431,14 +431,24 @@ export const runHRMSync = async () => {
       const phone = emp.phone || emp.mobile || emp.phoneNumber || "";
       const gender = mapGender(emp.gender || emp.sex);
 
-      // HRM status: "Active", "Inactive", "Terminated"
+      // HRM status: "Active", "Inactive", "Terminated", "Probation", "Pre-Onboarding"
       const statusRaw = (emp.status || "").toLowerCase();
-      const status =
+      let status = "active";
+      if (
         statusRaw === "inactive" ||
         statusRaw === "terminated" ||
         emp.terminationDate != null
-          ? "inactive"
-          : "active";
+      ) {
+        status = "inactive";
+      } else if (
+        statusRaw === "probation" ||
+        statusRaw.includes("thử việc") ||
+        statusRaw.includes("thu viec")
+      ) {
+        status = "probation";
+      } else if (statusRaw === "pre-onboarding" || statusRaw.includes("pre-onboarding")) {
+        status = "Pre-Onboarding";
+      }
 
       // Lương lấy từ contract nếu không có trên employee
       const salary = parseFloat(emp.salary || 0) || 0;
@@ -551,9 +561,7 @@ export const runHRMSync = async () => {
   return results;
 };
 
-// ─────────────────────────────────────────────────────────────
-// ENDPOINT: POST /api/v1/fumee/scrape/syncHRM  (trigger thủ công)
-// ─────────────────────────────────────────────────────────────
+
 export const syncFromHRM = async (req, res) => {
   try {
     console.log("[HRM] Trigger sync thủ công...");
