@@ -2,8 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { getBirthdays } from '../../utils/employeeApi';
 import {
   Table, Button, Input, Select, Space, Tag, Avatar,
-  Typography, Tooltip, Spin, Alert, Badge,
+  Typography, Tooltip, Spin, Alert, Badge, Tabs
 } from 'antd';
+import BirthdayWishManager from './BirthdayWishManager';
 import {
   SearchOutlined, ReloadOutlined, GiftOutlined,
   ClockCircleOutlined, StarFilled, FilterOutlined,
@@ -230,9 +231,16 @@ export default function BirthdayPage() {
       `}</style>
 
       <div style={{ padding: '28px 32px', maxWidth: 1200 }}>
-
-        {/* ── Header ── */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
+        <Tabs
+          defaultActiveKey="1"
+          items={[
+            {
+              key: '1',
+              label: 'Danh sách sinh nhật',
+              children: (
+                <>
+                  {/* ── Header ── */}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
           <div>
             <Title level={3} style={{ margin: 0, fontWeight: 700 }}>
               🎂 Sinh nhật nhân viên
@@ -359,7 +367,7 @@ export default function BirthdayPage() {
         {/* ── Error ── */}
         {error && (
           <Alert
-            message={error}
+            title={error}
             type="error"
             showIcon
             style={{ marginBottom: 16, borderRadius: 10 }}
@@ -394,7 +402,7 @@ export default function BirthdayPage() {
         )}
 
         {/* ── Section: Sắp tới ── */}
-        <Spin spinning={loading} tip="Đang tải dữ liệu từ hệ thống...">
+        <Spin spinning={loading} description="Đang tải dữ liệu từ hệ thống...">
           {(!loading && todayEmployees.length > 0 && upcomingEmployees.length > 0) && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
               <GiftOutlined style={{ color: '#1677ff', fontSize: 16 }} />
@@ -427,6 +435,16 @@ export default function BirthdayPage() {
             }}
           />
         </Spin>
+                </>
+              )
+            },
+            {
+              key: '2',
+              label: 'Quản lý lời chúc',
+              children: <BirthdayWishManager />
+            }
+          ]}
+        />
       </div>
     </>
   );

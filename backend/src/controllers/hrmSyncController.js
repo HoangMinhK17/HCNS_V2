@@ -561,7 +561,6 @@ export const runHRMSync = async () => {
   return results;
 };
 
-
 export const syncFromHRM = async (req, res) => {
   try {
     console.log("[HRM] Trigger sync thủ công...");

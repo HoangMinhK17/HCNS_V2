@@ -19,6 +19,8 @@ import settingsRouter   from "./settingsRouter.js";
 import scrapeRouter   from "./scrapeRouter.js";
 import contractRouter from "./contractRouter.js";
 
+import birthdayRouter from "./birthdayRouter.js";
+
 const router = express.Router();
 
 // Phase 1
@@ -39,5 +41,7 @@ router.use("/settings",    settingsRouter);
 // Legacy
 router.use("/scrape",    scrapeRouter);
 router.use("/contract",  contractRouter);
+
+router.use("/birthday", birthdayRouter);
 
 export default router;
