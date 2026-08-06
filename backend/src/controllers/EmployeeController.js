@@ -242,6 +242,8 @@ export const getBirthdays = async (req, res) => {
     // Tính dayOfYear của hôm nay và ngày tương lai trong năm hiện tại
     const startOfYear = new Date(now.getFullYear(), 0, 1);
     const todayDoy = Math.ceil((now - startOfYear) / 86400000) + 1;
+    // Trừ 1 để bù timezone UTC vs VN (MongoDB $dayOfYear tính theo UTC)
+    const fromDoy = Math.max(1, todayDoy - 1);
     const futureDoy = todayDoy + days;
 
     // Build điều kiện so sánh theo tháng + ngày (không theo năm)
@@ -251,7 +253,7 @@ export const getBirthdays = async (req, res) => {
       matchExpr = {
         $expr: {
           $and: [
-            { $gte: [{ $dayOfYear: "$birthday" }, todayDoy] },
+            { $gte: [{ $dayOfYear: "$birthday" }, fromDoy] },
             { $lte: [{ $dayOfYear: "$birthday" }, futureDoy] },
           ],
         },
@@ -262,7 +264,7 @@ export const getBirthdays = async (req, res) => {
       matchExpr = {
         $expr: {
           $or: [
-            { $gte: [{ $dayOfYear: "$birthday" }, todayDoy] },
+            { $gte: [{ $dayOfYear: "$birthday" }, fromDoy] },
             { $lte: [{ $dayOfYear: "$birthday" }, overflowDoy] },
           ],
         },
@@ -279,29 +281,45 @@ export const getBirthdays = async (req, res) => {
       .populate("department", "name")
       .lean();
 
+    const todayMonth = now.getMonth() + 1;
+    const todayDay   = now.getDate();
+    const todayLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
     const result = employees
       .map((emp) => {
         const bday = new Date(emp.birthday);
-        // Tính ngày sinh nhật năm nay
+        const bdMonth = bday.getMonth() + 1;
+        const bdDay   = bday.getDate();
+
+        // Xác định isToday bằng tháng+ngày trực tiếp (không phụ thuộc timezone)
+        const isToday = bdMonth === todayMonth && bdDay === todayDay;
+
+        // Tính ngày sinh nhật năm nay theo giờ địa phương
         const birthdayThisYear = new Date(now.getFullYear(), bday.getMonth(), bday.getDate());
-        // Nếu đã qua năm nay (trong trường hợp overflow), tính năm sau
-        if (birthdayThisYear < new Date(now.getFullYear(), now.getMonth(), now.getDate())) {
+        if (birthdayThisYear < todayLocal) {
           birthdayThisYear.setFullYear(now.getFullYear() + 1);
         }
-        const daysLeft = Math.round((birthdayThisYear - new Date(now.getFullYear(), now.getMonth(), now.getDate())) / 86400000);
-        const age = now.getFullYear() - bday.getFullYear() + (daysLeft === 0 ? 0 : 1);
+        const daysLeft = isToday
+          ? 0
+          : Math.round((birthdayThisYear - todayLocal) / 86400000);
+
+        // Bỏ những record bị kéo vào do fromDoy-1 nhưng thực tế đã qua hôm qua
+        if (!isToday && daysLeft > days) return null;
+
+        const age = now.getFullYear() - bday.getFullYear() + (isToday ? 0 : 1);
         return {
           ...emp,
           positionName: emp.positionName || emp.position?.name || "—",
           departmentName: emp.departmentName || emp.department?.name || "—",
-          birthdayFormatted: `${String(bday.getDate()).padStart(2, "0")}/${String(bday.getMonth() + 1).padStart(2, "0")}`,
+          birthdayFormatted: `${String(bdDay).padStart(2, "0")}/${String(bdMonth).padStart(2, "0")}`,
           birthdayFull: bday.toLocaleDateString("vi-VN"),
           daysLeft,
           age,
-          isToday: daysLeft === 0,
-          urgency: daysLeft === 0 ? "today" : daysLeft <= 7 ? "critical" : daysLeft <= 14 ? "warning" : "normal",
+          isToday,
+          urgency: isToday ? "today" : daysLeft <= 7 ? "critical" : daysLeft <= 14 ? "warning" : "normal",
         };
       })
+      .filter(Boolean)
       .sort((a, b) => a.daysLeft - b.daysLeft);
 
     return res.status(200).json({ success: true, total: result.length, employees: result });

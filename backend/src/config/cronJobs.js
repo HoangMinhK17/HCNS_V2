@@ -2,7 +2,9 @@ import cron from "node-cron";
 import ExcelJS from "exceljs";
 import { runHRMSync } from "../controllers/hrmSyncController.js";
 import Employee from "../models/Employee.js";
+import BirthDay from "../models/BirthDay.js";
 import { sendMail } from "./sendMail.js";
+import { loginCRM, sendZaloCampaign } from "../utils/crmZaloService.js";
 
 // ─────────────────────────────────────────────────────────────
 // HELPER: Gửi email cảnh báo hợp đồng đến một nhân viên
@@ -376,7 +378,7 @@ const initCronJobs = () => {
     { timezone: "Asia/Ho_Chi_Minh" }
   );
 
-  // ── JOB 3: Thông báo sinh nhật nhân viên ──
+  // ── JOB 3: Thông báo sinh nhật nhân viên qua Zalo CRM ──
   // Chạy mỗi ngày lúc 07:30 sáng (giờ VN)
   cron.schedule(
     "30 7 * * *",
@@ -407,64 +409,120 @@ const initCronJobs = () => {
 
         console.log(`[Cron/Birthday] 🎂 Hôm nay có ${birthdayEmployees.length} sinh nhật`);
 
-        let sentCount = 0;
-        let skipCount = 0;
-        const birthdayList = [];
+        const birthdayList = [...birthdayEmployees];
 
-        for (const emp of birthdayEmployees) {
-          birthdayList.push(emp);
-          try {
-            const result = await sendBirthdayEmail(emp);
-            if (result.sent) {
-              sentCount++;
-              console.log(`[Cron/Birthday] 🎉 Đã gửi → ${emp.fullName} (${emp.empCode})`);
-            } else {
-              console.log(`[Cron/Birthday] ⏭ Bỏ qua ${emp.empCode}: ${result.reason}`);
-              skipCount++;
+        // ── GỬI ZALO CAMPAIGN QUA CRM ─────────────────────────────────
+        console.log("[Cron/Birthday/Zalo] Bắt đầu gửi Zalo chúc mừng sinh nhật...");
+        try {
+          const channelId = process.env.ID_ZALO_CRM;
+          if (!channelId) {
+            console.warn("[Cron/Birthday/Zalo] Thiếu ID_ZALO_CRM trong .env, bỏ qua gửi Zalo.");
+          } else {
+            // Lấy tất cả lời chúc từ DB phân theo giới tính
+            const allWishes = await BirthDay.find().lean();
+
+            // Hàm chọn lời chúc ngẫu nhiên theo giới tính
+            const getWish = (gender) => {
+              // Ưu tiên lời chúc đúng giới tính, fallback về "other"
+              const matched = allWishes.filter(
+                (w) => w.gender === gender || w.gender === "other"
+              );
+              const exact = allWishes.filter((w) => w.gender === gender);
+              const pool = exact.length > 0 ? exact : matched;
+              if (pool.length === 0) return null;
+              return pool[Math.floor(Math.random() * pool.length)].birthDayWish;
+            };
+
+            // Chia nhân viên theo giới tính và lọc những ai có số điện thoại
+            const maleEmps = birthdayList.filter((e) => e.gender === "male" && e.phone);
+            const femaleEmps = birthdayList.filter((e) => e.gender === "female" && e.phone);
+            const otherEmps = birthdayList.filter((e) => e.gender !== "male" && e.gender !== "female" && e.phone);
+
+            // Đăng nhập CRM được quản lý tự động bên trong crmZaloService
+            const dateLabel = `${String(todayDay).padStart(2, "0")}/${String(todayMonth).padStart(2, "0")}`;
+
+            // Gửi campaign cho Nam
+            if (maleEmps.length > 0) {
+              const wishContent = getWish("male");
+              if (!wishContent) {
+                console.warn("[Cron/Birthday/Zalo] ⚠️ Không tìm thấy lời chúc cho Nam, bỏ qua.");
+              } else {
+                const malePhones = maleEmps.map((e) => e.phone);
+                try {
+                  const result = await sendZaloCampaign({
+                    campaignName: `Chúc mừng sinh nhật Nam ${dateLabel}`,
+                    channelId,
+                    content: wishContent,
+                    phones: malePhones,
+                  });
+                  console.log(
+                    `[Cron/Birthday/Zalo] 🎉 Campaign Nam gửi thành công (${maleEmps.length} người):`,
+                    result?.name || result
+                  );
+                } catch (zaloErr) {
+                  console.error("[Cron/Birthday/Zalo] ❌ Gửi campaign Nam thất bại:", zaloErr.message);
+                }
+              }
             }
-          } catch (mailErr) {
-            console.error(`[Cron/Birthday] ❌ Gửi mail thất bại cho ${emp.empCode}:`, mailErr.message);
-            skipCount++;
+
+            // Gửi campaign cho Nữ
+            if (femaleEmps.length > 0) {
+              const wishContent = getWish("female");
+              if (!wishContent) {
+                console.warn("[Cron/Birthday/Zalo] ⚠️ Không tìm thấy lời chúc cho Nữ, bỏ qua.");
+              } else {
+                const femalePhones = femaleEmps.map((e) => e.phone);
+                try {
+                  const result = await sendZaloCampaign({
+                    campaignName: `Chúc mừng sinh nhật Nữ ${dateLabel}`,
+                    channelId,
+                    content: wishContent,
+                    phones: femalePhones,
+                  });
+                  console.log(
+                    `[Cron/Birthday/Zalo] 🎉 Campaign Nữ gửi thành công (${femaleEmps.length} người):`,
+                    result?.name || result
+                  );
+                } catch (zaloErr) {
+                  console.error("[Cron/Birthday/Zalo] ❌ Gửi campaign Nữ thất bại:", zaloErr.message);
+                }
+              }
+            }
+
+            // Gửi campaign cho Khác (dùng lời chúc "other" hoặc fallback Nam)
+            if (otherEmps.length > 0) {
+              const wishContent = getWish("other");
+              if (!wishContent) {
+                console.warn("[Cron/Birthday/Zalo] ⚠️ Không tìm thấy lời chúc cho Khác, bỏ qua.");
+              } else {
+                const otherPhones = otherEmps.map((e) => e.phone);
+                try {
+                  const result = await sendZaloCampaign({
+                    campaignName: `Chúc mừng sinh nhật ${dateLabel}`,
+                    channelId,
+                    content: wishContent,
+                    phones: otherPhones,
+                  });
+                  console.log(
+                    `[Cron/Birthday/Zalo] 🎉 Campaign Khác gửi thành công (${otherEmps.length} người):`,
+                    result?.name || result
+                  );
+                } catch (zaloErr) {
+                  console.error("[Cron/Birthday/Zalo] ❌ Gửi campaign Khác thất bại:", zaloErr.message);
+                }
+              }
+            }
+
+            const noPhoneCount = birthdayList.filter((e) => !e.phone).length;
+            if (noPhoneCount > 0) {
+              console.warn(`[Cron/Birthday/Zalo] ⚠️ ${noPhoneCount} nhân viên không có số điện thoại, bỏ qua Zalo.`);
+            }
           }
+        } catch (zaloJobErr) {
+          console.error("[Cron/Birthday/Zalo] ❌ Lỗi tổng quát khi gửi Zalo:", zaloJobErr.message);
         }
+        // ── KẾT THÚC GỬI ZALO ─────────────────────────────────────────
 
-        // Gửi tóm tắt cho HR
-        if (process.env.EMAIL_HCNS && birthdayList.length > 0) {
-          try {
-            const rows = birthdayList
-              .map(
-                (emp) =>
-                  `<tr><td>${emp.empCode}</td><td>${emp.fullName}</td><td>${emp.positionName || "—"}</td><td>${emp.departmentName || "—"}</td><td>${new Date(emp.birthday).toLocaleDateString("vi-VN")}</td></tr>`
-              )
-              .join("");
-
-            const hrHtml = `
-              <h2>🎂 Danh sách sinh nhật hôm nay (${now.toLocaleDateString("vi-VN")})</h2>
-              <p>Kính gửi Phòng Hành chính Nhân sự,</p>
-              <p>Dưới đây là danh sách nhân viên có sinh nhật hôm nay:</p>
-              <table border="1" cellpadding="8" cellspacing="0" style="border-collapse:collapse;width:100%;">
-                <thead style="background:#f97316;color:#fff;">
-                  <tr><th>Mã NV</th><th>Họ tên</th><th>Chức vụ</th><th>Phòng ban</th><th>Ngày sinh</th></tr>
-                </thead>
-                <tbody>${rows}</tbody>
-              </table>
-              <br/><p>Trân trọng,<br/>Hệ thống Quản lý Nhân sự - HCNS FumeeTech</p>
-            `;
-
-            await sendMail({
-              to: process.env.EMAIL_HCNS,
-              subject: `🎂 [HCNS] Danh sách sinh nhật hôm nay ${now.toLocaleDateString("vi-VN")} (${birthdayList.length} người)`,
-              html: hrHtml,
-            });
-            console.log("[Cron/Birthday] Đã gửi tóm tắt sinh nhật cho phòng HCNS.");
-          } catch (hrErr) {
-            console.error("[Cron/Birthday] Lỗi gửi tóm tắt HR:", hrErr.message);
-          }
-        }
-
-        console.log(
-          `[Cron/Birthday] Hoàn tất: ${sentCount} email gửi đến nhân viên, ${skipCount} bỏ qua`
-        );
       } catch (err) {
         console.error("[Cron/Birthday] Lỗi:", err.message);
       }
@@ -475,7 +533,7 @@ const initCronJobs = () => {
   console.log("[Cron] Đã đăng ký:");
   console.log("  📡 Job 1 — Auto-sync HRM API: Mỗi ngày lúc 07:00");
   console.log("  📧 Job 2 — Cảnh báo hợp đồng: Mỗi ngày lúc 08:00 (gửi ở mốc 30/14/7/3/1 ngày)");
-  console.log("  🎂 Job 3 — Thông báo sinh nhật: Mỗi ngày lúc 07:30");
+  console.log("  🎂 Job 3 — Thông báo sinh nhật (Email + Zalo): Mỗi ngày lúc 07:30");
 };
 
 export default initCronJobs;

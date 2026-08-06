@@ -25,4 +25,4 @@ const deleteWishBirth = async (id) => {
     return res.data;
 };
 
-export default { getWishBirths, getWishBirthById, createWishBirth, updateWishBirth, deleteWishBirth };
+export { getWishBirths, getWishBirthById, createWishBirth, updateWishBirth, deleteWishBirth };

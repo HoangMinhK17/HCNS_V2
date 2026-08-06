@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Button, Modal, Form, Input, Select, message, Space, Popconfirm, Card, Typography } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
-import birthDayWishApi from '../../utils/birthDayWishApi';
+import { getWishBirths, updateWishBirth, deleteWishBirth, createWishBirth } from '../../utils/birthDayWishApi';
 
 const { Title } = Typography;
 export default function BirthdayWishManager() {
@@ -14,7 +14,7 @@ export default function BirthdayWishManager() {
   const fetchWishes = async () => {
     setLoading(true);
     try {
-      const response = await birthDayWishApi.getWishBirths();
+      const response = await getWishBirths();
       setWishes(response.data || []);
     } catch (error) {
       message.error('Không thể tải danh sách lời chúc.');
@@ -48,26 +48,26 @@ export default function BirthdayWishManager() {
     try {
       const values = await form.validateFields();
       if (editingId) {
-        await birthDayWishApi.updateWishBirth(editingId, values);
-        message.success('Cập nhật lời chúc thành công');
+        const response = await updateWishBirth(editingId, values);
+        message.success(response.message);
       } else {
-        await birthDayWishApi.createWishBirth(values);
-        message.success('Thêm lời chúc thành công');
+        const response = await createWishBirth(values);
+        message.success(response.message);
       }
       setIsModalOpen(false);
       fetchWishes();
     } catch (error) {
-      message.error('Có lỗi xảy ra. Vui lòng thử lại.');
+      message.error(error.response.data.message);
     }
   };
 
   const handleDelete = async (id) => {
     try {
-      await birthDayWishApi.deleteWishBirth(id);
-      message.success('Xóa lời chúc thành công');
+      const response = await deleteWishBirth(id);
+      message.success(response.message);
       fetchWishes();
     } catch (error) {
-      message.error('Không thể xóa lời chúc.');
+      message.error(error.response.data.message);
     }
   };
 
@@ -79,7 +79,7 @@ export default function BirthdayWishManager() {
       render: (text) => <div style={{ whiteSpace: 'pre-wrap' }}>{text}</div>
     },
     {
-      title: 'Dành cho (Giới tính)',
+      title: 'Dành cho ',
       dataIndex: 'gender',
       key: 'gender',
       width: 150,

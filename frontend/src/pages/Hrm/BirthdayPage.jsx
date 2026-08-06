@@ -8,15 +8,19 @@ import BirthdayWishManager from './BirthdayWishManager';
 import {
   SearchOutlined, ReloadOutlined, GiftOutlined,
   ClockCircleOutlined, StarFilled, FilterOutlined,
+  UserOutlined, MailOutlined, PhoneOutlined,
+  GiftFilled,
+  WarningFilled,
+  
 } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
 
 const URGENCY_CONFIG = {
-  today:    { color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe', label: '🎂 Hôm nay', badgeStatus: 'processing' },
-  critical: { color: '#dc2626', bg: '#fef2f2', border: '#fecaca', label: '🔴 Trong 7 ngày', badgeStatus: 'error' },
-  warning:  { color: '#d97706', bg: '#fffbeb', border: '#fde68a', label: '🟡 Trong 14 ngày', badgeStatus: 'warning' },
-  normal:   { color: '#059669', bg: '#f0fdf4', border: '#bbf7d0', label: '✅ Sắp tới', badgeStatus: 'success' },
+  today:    { color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe', label: ' Hôm nay', badgeStatus: 'processing' },
+  critical: { color: '#dc2626', bg: '#fef2f2', border: '#fecaca', label: 'Trong 7 ngày', badgeStatus: 'error' },
+  warning:  { color: '#d97706', bg: '#fffbeb', border: '#fde68a', label: 'Trong 14 ngày', badgeStatus: 'warning' },
+  normal:   { color: '#059669', bg: '#f0fdf4', border: '#bbf7d0', label: 'Sắp tới', badgeStatus: 'success' },
 };
 
 function ConfettiBadge() {
@@ -29,7 +33,7 @@ function ConfettiBadge() {
       boxShadow: '0 2px 8px rgba(124,58,237,0.35)',
       animation: 'pulse-badge 1.5s ease-in-out infinite',
     }}>
-      🎉 Sinh nhật hôm nay!
+      <GiftFilled /> Sinh nhật hôm nay!
     </span>
   );
 }
@@ -113,8 +117,8 @@ export default function BirthdayPage() {
               {r.isToday && (
                 <span style={{
                   position: 'absolute', bottom: -2, right: -2,
-                  fontSize: 14, lineHeight: 1,
-                }}>🎂</span>
+                  fontSize: 14, lineHeight: 1, color: "#ff4410ff"
+                }}><GiftFilled /></span>
               )}
             </div>
             <div>
@@ -145,8 +149,8 @@ export default function BirthdayPage() {
         const cfg = URGENCY_CONFIG[r.urgency] || URGENCY_CONFIG.normal;
         return (
           <div>
-            <Text strong style={{ fontSize: 14, color: r.isToday ? '#7c3aed' : '#1f2937' }}>
-              🎂 {r.birthdayFormatted}
+            <Text strong style={{ fontSize: 14, color: cfg.color }}>
+              <GiftFilled /> {r.birthdayFormatted}
             </Text>
             <div style={{ marginTop: 2 }}>
               <Text type="secondary" style={{ fontSize: 11.5 }}>
@@ -176,36 +180,18 @@ export default function BirthdayPage() {
       },
     },
     {
-      title: 'Mức độ',
-      render: (_, r) => {
-        const cfg = URGENCY_CONFIG[r.urgency] || URGENCY_CONFIG.normal;
-        return (
-          <Tag
-            style={{
-              borderRadius: 20, fontWeight: 600, fontSize: 11.5,
-              padding: '2px 10px',
-              background: cfg.bg, border: `1px solid ${cfg.border}`,
-              color: cfg.color,
-            }}
-          >
-            {cfg.label}
-          </Tag>
-        );
-      },
-    },
-    {
       title: 'Liên hệ',
       render: (_, r) => (
         <div style={{ fontSize: 12, color: '#4b5563' }}>
           {r.email && (
             <div style={{ marginBottom: 2 }}>
-              <span style={{ color: '#9ca3af', marginRight: 4 }}>✉️</span>
+              <span style={{ color: '#9ca3af', marginRight: 4 }}><MailOutlined /></span>
               {r.email}
             </div>
           )}
           {r.phone && (
             <div>
-              <span style={{ color: '#9ca3af', marginRight: 4 }}>📞</span>
+              <span style={{ color: '#9ca3af', marginRight: 4 }}><PhoneOutlined /></span>
               {r.phone}
             </div>
           )}
@@ -242,8 +228,8 @@ export default function BirthdayPage() {
                   {/* ── Header ── */}
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
           <div>
-            <Title level={3} style={{ margin: 0, fontWeight: 700 }}>
-              🎂 Sinh nhật nhân viên
+            <Title level={4} style={{ margin: 0, fontWeight: 700 }}>
+               Sinh nhật nhân viên
             </Title>
 
             {/* Stats badges */}
@@ -257,7 +243,7 @@ export default function BirthdayPage() {
                     fontSize: 12.5, color: '#7c3aed', fontWeight: 700,
                     animation: 'birthday-glow 2s ease-in-out infinite',
                   }}>
-                    🎉 {todayCount} người sinh nhật hôm nay
+                    <GiftFilled /> {todayCount} người sinh nhật hôm nay
                   </span>
                 )}
                 {criticalCount > 0 && (
@@ -267,7 +253,7 @@ export default function BirthdayPage() {
                     borderRadius: 8, padding: '4px 12px',
                     fontSize: 12.5, color: '#dc2626', fontWeight: 600,
                   }}>
-                    🔴 {criticalCount} sinh nhật trong 7 ngày tới
+                    <WarningFilled /> {criticalCount} sinh nhật trong 7 ngày tới
                   </span>
                 )}
                 {warningCount > 0 && (
@@ -277,7 +263,7 @@ export default function BirthdayPage() {
                     borderRadius: 8, padding: '4px 12px',
                     fontSize: 12.5, color: '#d97706', fontWeight: 600,
                   }}>
-                    🟡 {warningCount} sinh nhật trong 14 ngày tới
+                    <WarningFilled /> {warningCount} sinh nhật trong 14 ngày tới
                   </span>
                 )}
                 <span style={{
@@ -291,7 +277,7 @@ export default function BirthdayPage() {
                     background: '#1677ff', display: 'inline-block',
                     animation: 'pulse-badge 1.5s ease-in-out infinite',
                   }} />
-                  Tự động quét theo ngày/tháng · Không phụ thuộc năm sinh
+                  Tự động quét theo ngày/tháng · Không phụ thuộc năm sinh - Tự động gửi Zalo chúc mừng
                 </span>
               </div>
             )}
@@ -332,7 +318,7 @@ export default function BirthdayPage() {
               label: d === 'all' ? 'Tất cả phòng ban' : d,
             }))}
           />
-
+{/* 
           <Select
             value={urgencyFilter}
             onChange={setUrgencyFilter}
@@ -341,12 +327,12 @@ export default function BirthdayPage() {
             id="birthday-urgency-filter"
             options={[
               { value: 'all',      label: 'Tất cả mức độ' },
-              { value: 'today',    label: '🎉 Sinh nhật hôm nay' },
-              { value: 'critical', label: '🔴 Trong 7 ngày tới' },
-              { value: 'warning',  label: '🟡 Trong 14 ngày tới' },
-              { value: 'normal',   label: '✅ Trong thời gian còn lại' },
+              { value: 'today',    label: <><GiftFilled /> Sinh nhật hôm nay</> },
+              { value: 'critical', label: <><ClockCircleOutlined /> Trong 7 ngày tới</> },
+              { value: 'warning',  label: <><ClockCircleOutlined /> Trong 14 ngày tới</> },
+              { value: 'normal',   label: <><ClockCircleOutlined /> Trong thời gian còn lại</> },
             ]}
-          />
+          /> */}
 
           <Select
             value={daysRange}
@@ -355,11 +341,11 @@ export default function BirthdayPage() {
             id="birthday-days-range"
             allowClear
             options={[
-              { value: 7,   label: 'Trong 7 ngày tới' },
-              { value: 14,  label: 'Trong 14 ngày tới' },
-              { value: 30,  label: 'Trong 30 ngày tới' },
-              { value: 60,  label: 'Trong 60 ngày tới' },
-              { value: 90,  label: 'Trong 90 ngày tới' },
+              { value: 7,   label: <><ClockCircleOutlined /> Trong 7 ngày tới</> },
+              { value: 14,  label: <><ClockCircleOutlined /> Trong 14 ngày tới</> },
+              { value: 30,  label: <><ClockCircleOutlined /> Trong 30 ngày tới</> },
+              { value: 60,  label: <><ClockCircleOutlined /> Trong 60 ngày tới</> },
+              { value: 90,  label: <><ClockCircleOutlined /> Trong 90 ngày tới</> },
             ]}
           />
         </Space>
