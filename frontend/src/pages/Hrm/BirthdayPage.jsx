@@ -43,8 +43,7 @@ export default function BirthdayPage() {
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState(null);
   const [search, setSearch]       = useState('');
-  const [deptFilter, setDeptFilter]       = useState('all');
-  const [urgencyFilter, setUrgencyFilter] = useState('all');
+  const [deptFilter, setDeptFilter]       = useState(null);
   const [daysRange, setDaysRange]         = useState(30);
 
   const fetchBirthdays = useCallback(async () => {
@@ -72,7 +71,7 @@ export default function BirthdayPage() {
   const warningCount  = employees.filter((e) => e.urgency === 'warning').length;
 
   // Departments list
-  const departments = ['all', ...new Set(employees.map((e) => e.departmentName).filter(Boolean))];
+  const departments = [...new Set(employees.map((e) => e.departmentName).filter(Boolean))];
 
   // Filter
   const filtered = employees.filter((e) => {
@@ -80,17 +79,12 @@ export default function BirthdayPage() {
       !search ||
       e.fullName?.toLowerCase().includes(search.toLowerCase()) ||
       e.empCode?.toLowerCase().includes(search.toLowerCase());
-    const matchDept    = deptFilter === 'all' || e.departmentName === deptFilter;
-    const matchUrgency = urgencyFilter === 'all' || e.urgency === urgencyFilter;
-    return matchSearch && matchDept && matchUrgency;
+    const matchDept = !deptFilter || e.departmentName === deptFilter;
+    return matchSearch && matchDept;
   });
 
-  const todayEmployees    = urgencyFilter === 'all' || urgencyFilter === 'today'
-    ? filtered.filter((e) => e.isToday)
-    : [];
-  const upcomingEmployees = urgencyFilter === 'all' || urgencyFilter !== 'today'
-    ? filtered.filter((e) => !e.isToday)
-    : [];
+  const todayEmployees    = filtered.filter((e) => e.isToday);
+  const upcomingEmployees = filtered.filter((e) => !e.isToday);
 
   const columns = [
     {
@@ -309,30 +303,16 @@ export default function BirthdayPage() {
 
           <Select
             value={deptFilter}
-            onChange={setDeptFilter}
+            onChange={(val) => setDeptFilter(val ?? null)}
             allowClear
+            placeholder="Tất cả phòng ban"
             style={{ width: 210 }}
             id="birthday-dept-filter"
             options={departments.map((d) => ({
               value: d,
-              label: d === 'all' ? 'Tất cả phòng ban' : d,
+              label: d,
             }))}
           />
-{/* 
-          <Select
-            value={urgencyFilter}
-            onChange={setUrgencyFilter}
-            style={{ width: 200 }}
-            allowClear
-            id="birthday-urgency-filter"
-            options={[
-              { value: 'all',      label: 'Tất cả mức độ' },
-              { value: 'today',    label: <><GiftFilled /> Sinh nhật hôm nay</> },
-              { value: 'critical', label: <><ClockCircleOutlined /> Trong 7 ngày tới</> },
-              { value: 'warning',  label: <><ClockCircleOutlined /> Trong 14 ngày tới</> },
-              { value: 'normal',   label: <><ClockCircleOutlined /> Trong thời gian còn lại</> },
-            ]}
-          /> */}
 
           <Select
             value={daysRange}

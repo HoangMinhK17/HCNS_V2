@@ -134,7 +134,7 @@ const PERMISSION_GROUPS = [
     ],
   },
   {
-    group: 'Cấu hình hệ thống (Phase 2)',
+    group: 'Cấu hình hệ thống',
     color: '#6b7280',
     permissions: [
       { key: 'location:manage', label: 'Quản lý địa điểm' },
@@ -143,15 +143,36 @@ const PERMISSION_GROUPS = [
       { key: 'leavebalance:manage', label: 'Quản lý quỹ phép' },
     ],
   },
+  {
+    group: 'Sinh nhật',
+    color: '#6b7280',
+    permissions: [
+      { key: 'birthday:view', label: 'Xem' },
+      { key: 'birthday:create', label: 'Tạo mới' },
+      { key: 'birthday:edit', label: 'Chỉnh sửa' },
+      { key: 'birthday:delete', label: 'Xóa' },
+    ],
+  }
 ];
 
 // ── Component: Hiển thị permission matrix trong bảng ────────────
 function PermissionTags({ permissions = [] }) {
   if (!permissions.length) return <Text type="secondary" style={{ fontSize: 12 }}>Không có quyền</Text>;
+  // Gom nhóm theo module prefix
+  const grouped = {};
+  permissions.forEach(p => {
+    const prefix = p.split(':')[0];
+    if (!grouped[prefix]) grouped[prefix] = [];
+    grouped[prefix].push(p);
+  });
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-      {permissions.map(p => (
-        <Tag key={p} style={{ fontSize: 11, margin: 0 }}>{p}</Tag>
+      {Object.entries(grouped).map(([prefix, perms]) => (
+        <Tooltip key={prefix} title={perms.join(', ')}>
+          <Tag style={{ fontSize: 11, margin: 0, cursor: 'default' }}>
+            {prefix} ×{perms.length}
+          </Tag>
+        </Tooltip>
       ))}
     </div>
   );
@@ -159,6 +180,10 @@ function PermissionTags({ permissions = [] }) {
 
 // ── Component: Checkbox group theo module ────────────────────────
 function PermissionGroupCheckbox({ value = [], onChange }) {
+  const allKeys = PERMISSION_GROUPS.flatMap(g => g.permissions.map(p => p.key));
+  const isAllChecked = allKeys.length > 0 && allKeys.every(k => value.includes(k));
+  const isSomeChecked = allKeys.some(k => value.includes(k)) && !isAllChecked;
+
   const toggle = (perm) => {
     const next = value.includes(perm) ? value.filter(p => p !== perm) : [...value, perm];
     onChange?.(next);
@@ -174,35 +199,125 @@ function PermissionGroupCheckbox({ value = [], onChange }) {
     }
   };
 
+  const toggleAll = () => {
+    if (isAllChecked) {
+      onChange?.([]);
+    } else {
+      onChange?.(allKeys);
+    }
+  };
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {PERMISSION_GROUPS.map(group => {
-        const groupKeys = group.permissions.map(p => p.key);
-        const allChecked = groupKeys.every(k => value.includes(k));
-        const someChecked = groupKeys.some(k => value.includes(k)) && !allChecked;
-        return (
-          <div key={group.group} style={{ border: '1px solid #f0f0f0', borderRadius: 10, padding: '12px 16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-              <Checkbox
-                checked={allChecked}
-                indeterminate={someChecked}
-                onChange={() => toggleGroup(group)}
-              />
-              <Tag color={group.color} style={{ fontWeight: 600, fontSize: 12 }}>{group.group}</Tag>
-              <Text type="secondary" style={{ fontSize: 11 }}>({groupKeys.filter(k => value.includes(k)).length}/{groupKeys.length})</Text>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* ── Header: Chọn tất cả ── */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        background: isAllChecked
+          ? 'linear-gradient(135deg, #1677ff14, #1677ff08)'
+          : 'linear-gradient(135deg, #f8faff, #f0f4ff)',
+        border: `1.5px solid ${isAllChecked ? '#1677ff55' : '#e0e7ff'}`,
+        borderRadius: 10, padding: '10px 16px',
+        transition: 'all 0.2s',
+      }}>
+        <Checkbox
+          checked={isAllChecked}
+          indeterminate={isSomeChecked}
+          onChange={toggleAll}
+          style={{ fontWeight: 700, fontSize: 13 }}
+        >
+          <span style={{ fontWeight: 700, fontSize: 13, color: isAllChecked ? '#1677ff' : '#1f2937' }}>
+            Chọn tất cả quyền
+          </span>
+          <Text type="secondary" style={{ fontSize: 11, marginLeft: 8 }}>
+            ({value.length}/{allKeys.length} quyền)
+          </Text>
+        </Checkbox>
+        {isAllChecked && (
+          <Tag color="blue" style={{ fontSize: 11, fontWeight: 600, borderRadius: 20 }}>
+            ✓ Toàn quyền
+          </Tag>
+        )}
+      </div>
+
+      {/* ── Các nhóm module ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        {PERMISSION_GROUPS.map(group => {
+          const groupKeys = group.permissions.map(p => p.key);
+          const allChecked = groupKeys.every(k => value.includes(k));
+          const someChecked = groupKeys.some(k => value.includes(k)) && !allChecked;
+          const checkedCount = groupKeys.filter(k => value.includes(k)).length;
+
+          return (
+            <div
+              key={group.group}
+              style={{
+                border: `1.5px solid ${allChecked ? group.color + '55' : someChecked ? group.color + '33' : '#f0f0f0'}`,
+                borderRadius: 10,
+                overflow: 'hidden',
+                transition: 'border-color 0.2s',
+                background: allChecked ? group.color + '08' : '#fff',
+              }}
+            >
+              {/* Header nhóm */}
+              <div
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '8px 12px',
+                  background: allChecked ? group.color + '18' : someChecked ? group.color + '0a' : '#fafafa',
+                  borderBottom: '1px solid #f0f0f0',
+                  cursor: 'pointer',
+                }}
+                onClick={() => toggleGroup(group)}
+              >
+                <Checkbox
+                  checked={allChecked}
+                  indeterminate={someChecked}
+                  onChange={(e) => { e.stopPropagation(); toggleGroup(group); }}
+                />
+                <Tag
+                  color={group.color}
+                  style={{ fontWeight: 600, fontSize: 11.5, margin: 0, borderRadius: 6 }}
+                >
+                  {group.group}
+                </Tag>
+                <span style={{
+                  marginLeft: 'auto', fontSize: 11,
+                  color: checkedCount > 0 ? group.color : '#9ca3af',
+                  fontWeight: checkedCount > 0 ? 600 : 400,
+                }}>
+                  {checkedCount}/{groupKeys.length}
+                </span>
+              </div>
+
+              {/* Danh sách quyền */}
+              <div style={{ padding: '8px 12px', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {group.permissions.map(p => {
+                  const checked = value.includes(p.key);
+                  return (
+                    <span
+                      key={p.key}
+                      onClick={() => toggle(p.key)}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 5,
+                        padding: '3px 10px', borderRadius: 20, cursor: 'pointer',
+                        fontSize: 11.5, fontWeight: checked ? 600 : 400,
+                        border: `1px solid ${checked ? group.color + '88' : '#e5e7eb'}`,
+                        background: checked ? group.color + '18' : '#f9fafb',
+                        color: checked ? group.color : '#6b7280',
+                        transition: 'all 0.15s',
+                        userSelect: 'none',
+                      }}
+                    >
+                      {checked && <CheckOutlined style={{ fontSize: 9 }} />}
+                      {p.label}
+                    </span>
+                  );
+                })}
+              </div>
             </div>
-            <Row gutter={[8, 8]}>
-              {group.permissions.map(p => (
-                <Col key={p.key} span={8}>
-                  <Checkbox checked={value.includes(p.key)} onChange={() => toggle(p.key)}>
-                    <Text style={{ fontSize: 12 }}>{p.label}</Text>
-                  </Checkbox>
-                </Col>
-              ))}
-            </Row>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -291,11 +406,24 @@ export default function RolesList() {
       )
     },
     {
-      title: 'Hệ thống',
+      title: 'Phân loại',
       dataIndex: 'isSystem',
       key: 'isSystem',
       width: 90,
-      render: v => v ? <Tag color="red">Mặc định</Tag> : <Tag color="default">Tùy chỉnh</Tag>
+      render: v => v ? <Tag color="red">Hệ thống</Tag> : <Tag color="default">Tùy chỉnh</Tag>
+    },
+    {
+      title: 'Số người dùng liên kết',
+      key: 'userCount',
+      align: 'center',
+      width: 100,
+      render: (_, r) => (
+        <Badge
+          count={r.userCount || 0}
+          style={{ background: r.userCount ? '#037b41ff' : '#00ff77' }}
+          showZero
+        />
+      )
     },
     {
       title: 'Thao tác',

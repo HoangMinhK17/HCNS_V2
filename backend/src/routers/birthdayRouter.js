@@ -4,11 +4,10 @@ import { createWishBirth, getWishBirth, updateWishBirth, deleteWishBirth } from 
 
 const router = express.Router();
 router.use(verifyToken);
-// router.use(checkPermission("birthday:manage"));
 
-router.post("/createWishBirth", createWishBirth);
-router.get("/getWishBirth", getWishBirth);
-router.put("/updateWishBirth/:id", updateWishBirth);
-router.delete("/deleteWishBirth/:id", deleteWishBirth);
+router.post("/createWishBirth",checkPermission("birthday:create"), createWishBirth);
+router.get("/getWishBirth", checkPermission("birthday:view"), getWishBirth);
+router.put("/updateWishBirth/:id", checkPermission("birthday:edit"), updateWishBirth);
+router.delete("/deleteWishBirth/:id", checkPermission("birthday:delete"), deleteWishBirth);
 
 export default router;

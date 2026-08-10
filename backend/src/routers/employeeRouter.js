@@ -30,7 +30,7 @@ router.get("/export", checkPermission("employee:view"), exportExcel);
 router.get("/template", checkPermission("employee:view"), downloadTemplate);
 router.post("/import", checkPermission("employee:import"), upload.single("file"), importExcel);
 router.post("/get-by-ids", checkPermission("employee:view"), getEmployeesByIds);
-router.get("/birthday", checkPermission("employee:view"), getBirthdays);
+router.get("/birthday", checkPermission("birthday:view"), getBirthdays);
 router.get("/:id", checkPermission("employee:view"), getById);
 router.post("/", checkPermission("employee:create"), create);
 router.put("/:id", checkPermission("employee:edit"), update);

@@ -36,6 +36,9 @@ export const ALL_PERMISSIONS = [
   // Settings
   "location:manage", "holiday:manage",
   "leavetype:manage", "leavebalance:manage",
+
+  //birthday
+  "birthday:view", "birthday:create", "birthday:edit", "birthday:delete",
 ];
 
 const RoleSchema = new mongoose.Schema(
