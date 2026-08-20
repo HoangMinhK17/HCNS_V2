@@ -45,6 +45,11 @@ const assignRole = async (id, roleId, roleCode) => {
     return response.data;
 };
 
+const changePassword = async (id, data) => {
+    const response = await api.put(`/users/${id}/change-password`, data);
+    return response.data;
+};
+
 export {
     login,
     logout,
@@ -55,4 +60,5 @@ export {
     updateUser,
     deleteUser,
     assignRole,
+    changePassword,
 };

@@ -19,7 +19,8 @@ import settingsRouter   from "./settingsRouter.js";
 import scrapeRouter   from "./scrapeRouter.js";
 import contractRouter from "./contractRouter.js";
 
-import birthdayRouter from "./birthdayRouter.js";
+import birthdayRouter        from "./birthdayRouter.js";
+import holidayEventRouter   from "./holidayEventRouter.js";
 
 const router = express.Router();
 
@@ -42,6 +43,7 @@ router.use("/settings",    settingsRouter);
 router.use("/scrape",    scrapeRouter);
 router.use("/contract",  contractRouter);
 
-router.use("/birthday", birthdayRouter);
+router.use("/birthday",       birthdayRouter);
+router.use("/holiday-events", holidayEventRouter);
 
 export default router;

@@ -3,6 +3,7 @@ import ExcelJS from "exceljs";
 import { runHRMSync } from "../controllers/hrmSyncController.js";
 import Employee from "../models/Employee.js";
 import BirthDay from "../models/BirthDay.js";
+import HolidayEvent from "../models/HolidayEvent.js";
 import { sendMail } from "./sendMail.js";
 import { loginCRM, sendZaloCampaign } from "../utils/crmZaloService.js";
 
@@ -530,10 +531,148 @@ const initCronJobs = () => {
     { timezone: "Asia/Ho_Chi_Minh" }
   );
 
+  // ── JOB 4: Tự động gửi thông báo/lời chúc nghỉ lễ qua Zalo ──
+  // Chạy mỗi ngày lúc 08:00 sáng (giờ VN)
+  cron.schedule(
+    "0 8 * * *",
+    async () => {
+      console.log("[Cron/Holiday] Bắt đầu kiểm tra sự kiện nghỉ lễ...");
+      try {
+        const channelId = process.env.ID_ZALO_CRM;
+        if (!channelId) {
+          console.warn("[Cron/Holiday] Thiếu ID_ZALO_CRM trong .env, bỏ qua.");
+          return;
+        }
+
+        // Lấy ngày hôm nay theo giờ VN (reset về 00:00:00)
+        const now = new Date();
+        const todayVN = new Date(
+          now.toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" })
+        );
+        todayVN.setHours(0, 0, 0, 0);
+
+        // Lấy tất cả sự kiện chưa bị xóa và còn trong tương lai (end_date >= hôm nay)
+        const events = await HolidayEvent.find({
+          end_date: { $gte: todayVN },
+        }).lean();
+
+        if (events.length === 0) {
+          console.log("[Cron/Holiday] Không có sự kiện nghỉ lễ nào cần xử lý.");
+          return;
+        }
+
+        console.log(`[Cron/Holiday] Tìm thấy ${events.length} sự kiện cần kiểm tra.`);
+
+        // Helper: render template placeholder
+        const renderTemplate = (template, vars = {}) => {
+          if (!template) return "";
+          return template.replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] ?? `{{${key}}}`);
+        };
+
+        // Lấy tất cả nhân viên active có số điện thoại (dùng chung cho mọi event)
+        const employees = await Employee.find({
+          status: { $nin: ["inactive", "terminated"] },
+          phone: { $nin: [null, ""] },
+          deletedAt: null,
+        }).lean();
+        const phones = employees.map((e) => e.phone).filter(Boolean);
+
+        if (phones.length === 0) {
+          console.log("[Cron/Holiday] Không có nhân viên nào có SĐT, bỏ qua.");
+          return;
+        }
+
+        for (const event of events) {
+          const startDate = new Date(event.start_date);
+          startDate.setHours(0, 0, 0, 0);
+          const dateLabel = startDate.toLocaleDateString("vi-VN");
+
+          const diffMs = startDate.getTime() - todayVN.getTime();
+          const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+
+          // ── KIỂM TRA 1: Thông báo trước kỳ nghỉ ─────────────────────
+          if (diffDays === event.notify_advance_days && !event.is_notified) {
+            if (!event.announcement_template) {
+              console.log(`[Cron/Holiday] ⏭ Bỏ qua thông báo "${event.title}": không có announcement_template.`);
+            } else {
+              const content = renderTemplate(event.announcement_template, {
+                title: event.title,
+                start_date: dateLabel,
+                end_date: new Date(event.end_date).toLocaleDateString("vi-VN"),
+                back_to_work_date: event.back_to_work_date
+                  ? new Date(event.back_to_work_date).toLocaleDateString("vi-VN")
+                  : "",
+                notify_advance_days: event.notify_advance_days,
+              });
+
+              try {
+                await sendZaloCampaign({
+                  campaignName: `[Thông báo nghỉ lễ] ${event.title} – ${dateLabel}`,
+                  channelId,
+                  content,
+                  phones,
+                });
+                // Cập nhật trạng thái
+                await HolidayEvent.findByIdAndUpdate(event._id, {
+                  is_notified: true,
+                  notified_at: new Date(),
+                  notified_count: phones.length,
+                });
+                console.log(
+                  `[Cron/Holiday] ✅ Đã gửi thông báo: "${event.title}" (${phones.length} người, còn ${diffDays} ngày)`
+                );
+              } catch (err) {
+                console.error(`[Cron/Holiday] ❌ Gửi thông báo "${event.title}" thất bại:`, err.message);
+              }
+            }
+          }
+
+          // ── KIỂM TRA 2: Lời chúc ngày bắt đầu nghỉ ─────────────────
+          if (diffDays === 0 && !event.is_wished) {
+            if (!event.wish_template) {
+              console.log(`[Cron/Holiday] ⏭ Bỏ qua lời chúc "${event.title}": không có wish_template.`);
+            } else {
+              const content = renderTemplate(event.wish_template, {
+                title: event.title,
+                start_date: dateLabel,
+              });
+
+              try {
+                await sendZaloCampaign({
+                  campaignName: `[Lời chúc] ${event.title} – ${dateLabel}`,
+                  channelId,
+                  content,
+                  phones,
+                });
+                // Cập nhật trạng thái
+                await HolidayEvent.findByIdAndUpdate(event._id, {
+                  is_wished: true,
+                  wished_at: new Date(),
+                  wished_count: phones.length,
+                });
+                console.log(
+                  `[Cron/Holiday] 🎉 Đã gửi lời chúc: "${event.title}" (${phones.length} người)`
+                );
+              } catch (err) {
+                console.error(`[Cron/Holiday] ❌ Gửi lời chúc "${event.title}" thất bại:`, err.message);
+              }
+            }
+          }
+        }
+
+        console.log("[Cron/Holiday] ✅ Hoàn tất kiểm tra sự kiện nghỉ lễ.");
+      } catch (err) {
+        console.error("[Cron/Holiday] ❌ Lỗi tổng quát:", err.message);
+      }
+    },
+    { timezone: "Asia/Ho_Chi_Minh" }
+  );
+
   console.log("[Cron] Đã đăng ký:");
   console.log("  📡 Job 1 — Auto-sync HRM API: Mỗi ngày lúc 07:00");
   console.log("  📧 Job 2 — Cảnh báo hợp đồng: Mỗi ngày lúc 08:00 (gửi ở mốc 30/14/7/3/1 ngày)");
   console.log("  🎂 Job 3 — Thông báo sinh nhật (Email + Zalo): Mỗi ngày lúc 07:30");
+  console.log("  🎉 Job 4 — Thông báo & lời chúc nghỉ lễ (Zalo): Mỗi ngày lúc 08:00");
 };
 
 export default initCronJobs;

@@ -10,6 +10,15 @@ import {
   SafetyOutlined,
   UserOutlined,
   ClusterOutlined,
+  GiftOutlined,
+  CalendarOutlined,
+  ClockCircleOutlined,
+  MobileOutlined,
+  LogoutOutlined,
+  ThunderboltOutlined,
+  LaptopOutlined,
+  MailOutlined,
+  FieldTimeOutlined,
 } from '@ant-design/icons';
 import { Menu, Avatar, Typography, Tag } from 'antd';
 
@@ -65,9 +74,15 @@ const MENU_CONFIG = [
       },
       {
         key: 'birthdays',
-        icon: <span style={{ fontSize: 14 }}>🎂</span>,
+        icon: <GiftOutlined />,
         label: 'Sinh nhật nhân viên',
         roles: [ROLES.SUPER_ADMIN, ROLES.HR_ADMIN, ROLES.MANAGER],
+      },
+      {
+        key: 'holiday-events',
+        icon: <CalendarOutlined />,
+        label: 'Quản lý nghỉ lễ',
+        roles: [ROLES.SUPER_ADMIN, ROLES.HR_ADMIN],
       },
     ],
   },
@@ -85,73 +100,73 @@ const MENU_CONFIG = [
       },
     ],
   },
-  { type: 'divider' },
-  {
-    key: 'grp-ops',
-    type: 'group',
-    label: 'VẬN HÀNH',
-    roles: ALL_ROLES,
-    children: [
-      {
-        key: 'shifts',
-        icon: <span style={{ fontSize: 14 }}>📅</span>,
-        label: 'Ca kíp',
-        roles: [ROLES.SUPER_ADMIN, ROLES.HR_ADMIN, ROLES.MANAGER],
-      },
-      {
-        key: 'attendance',
-        icon: <span style={{ fontSize: 14 }}>⏰</span>,
-        label: 'Bảng chấm công',
-        roles: ALL_ROLES,
-      },
-    ],
-  },
-  {
-    key: 'grp-ess',
-    type: 'group',
-    label: 'CỔNG NHÂN VIÊN (ESS)',
-    roles: ALL_ROLES,
-    children: [
-      {
-        key: 'ess/checkin',
-        icon: <span style={{ fontSize: 14 }}>📲</span>,
-        label: 'Check-in / Check-out',
-        roles: ALL_ROLES,
-      },
-      {
-        key: 'ess/leave',
-        icon: <span style={{ fontSize: 14 }}>🌴</span>,
-        label: 'Nghỉ phép',
-        roles: ALL_ROLES,
-      },
-      {
-        key: 'ess/overtime',
-        icon: <span style={{ fontSize: 14 }}>⚡</span>,
-        label: 'Làm thêm giờ',
-        roles: ALL_ROLES,
-      },
-      {
-        key: 'ess/asset',
-        icon: <span style={{ fontSize: 14 }}>🖥️</span>,
-        label: 'Đề xuất tài sản',
-        roles: ALL_ROLES,
-      },
-    ],
-  },
-  {
-    key: 'grp-approval',
-    type: 'group',
-    label: 'PHÊ DUYỆT',
-    roles: [ROLES.SUPER_ADMIN, ROLES.HR_ADMIN, ROLES.MANAGER],
-    children: [
-      {
-        key: 'approvals',
-        icon: <span style={{ fontSize: 14 }}>📬</span>,
-        label: 'Hộp phê duyệt',
-        roles: [ROLES.SUPER_ADMIN, ROLES.HR_ADMIN, ROLES.MANAGER],
-      },
-    ],
-  },
+  // { type: 'divider' },
+  // {
+  //   key: 'grp-ops',
+  //   type: 'group',
+  //   label: 'VẬN HÀNH',
+  //   roles: ALL_ROLES,
+  //   children: [
+  //     {
+  //       key: 'shifts',
+  //       icon: <ClockCircleOutlined />,
+  //       label: 'Ca kíp',
+  //       roles: [ROLES.SUPER_ADMIN, ROLES.HR_ADMIN, ROLES.MANAGER],
+  //     },
+  //     {
+  //       key: 'attendance',
+  //       icon: <ThunderboltOutlined />,
+  //       label: 'Bảng chấm công',
+  //       roles: ALL_ROLES,
+  //     },
+  //   ],
+  // },
+  // {
+  //   key: 'grp-ess',
+  //   type: 'group',
+  //   label: 'CỔNG NHÂN VIÊN (ESS)',
+  //   roles: ALL_ROLES,
+  //   children: [
+  //     {
+  //       key: 'ess/checkin',
+  //       icon: <MobileOutlined />,
+  //       label: 'Check-in / Check-out',
+  //       roles: ALL_ROLES,
+  //     },
+  //     {
+  //       key: 'ess/leave',
+  //       icon: <LogoutOutlined />,
+  //       label: 'Nghỉ phép',
+  //       roles: ALL_ROLES,
+  //     },
+  //     {
+  //       key: 'ess/overtime',
+  //       icon: <FieldTimeOutlined />,
+  //       label: 'Làm thêm giờ',
+  //       roles: ALL_ROLES,
+  //     },
+  //     {
+  //       key: 'ess/asset',
+  //       icon: <LaptopOutlined />,
+  //       label: 'Đề xuất tài sản',
+  //       roles: ALL_ROLES,
+  //     },
+  //   ],
+  // },
+  // {
+  //   key: 'grp-approval',
+  //   type: 'group',
+  //   label: 'PHÊ DUYỆT',
+  //   roles: [ROLES.SUPER_ADMIN, ROLES.HR_ADMIN, ROLES.MANAGER],
+  //   children: [
+  //     {
+  //       key: 'approvals',
+  //       icon: <MailOutlined />,
+  //       label: 'Hộp phê duyệt',
+  //       roles: [ROLES.SUPER_ADMIN, ROLES.HR_ADMIN, ROLES.MANAGER],
+  //     },
+  //   ],
+  // },
   { type: 'divider' },
   {
     key: 'grp-system',
@@ -177,12 +192,12 @@ const MENU_CONFIG = [
         label: 'Người dùng',
         roles: [ROLES.SUPER_ADMIN, ROLES.HR_ADMIN],
       },
-      {
-        key: 'attendance-settings',
-        icon: <SettingOutlined />,
-        label: 'Cài đặt chấm công',
-        roles: [ROLES.SUPER_ADMIN, ROLES.HR_ADMIN],
-      },
+      // {
+      //   key: 'attendance-settings',
+      //   icon: <SettingOutlined />,
+      //   label: 'Cài đặt chấm công',
+      //   roles: [ROLES.SUPER_ADMIN, ROLES.HR_ADMIN],
+      // },
     ],
   },
   {

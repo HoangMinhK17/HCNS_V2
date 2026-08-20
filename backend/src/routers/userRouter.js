@@ -2,6 +2,7 @@ import express from "express";
 import {
   getAll, getById, create, update, remove, assignRole,
   loginUser, refreshToken, logout,
+  changePassword,
 } from "../controllers/userController.js";
 import { verifyToken, checkRole, checkPermission } from "../middleware/authMiddleware.js";
 
@@ -13,6 +14,8 @@ router.post("/refresh-token", refreshToken);
 router.post("/logout", logout);
 
 router.use(verifyToken);
+router.put("/:id/change-password", changePassword);
+
 router.use(checkRole(["super-admin", "hr-admin"]))
 
 router.get("/", checkPermission("user:view"), getAll);

@@ -59,6 +59,8 @@ export default function EmployeesList() {
 
   const [searchText, setSearchText] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [departmentFilter, setDepartmentFilter] = useState('');
+  const [positionFilter, setPositionFilter] = useState('');
   const [employeesForDropdown, setEmployeesForDropdown] = useState([]);
 
   const [companies, setCompany] = useState([]);
@@ -83,12 +85,16 @@ export default function EmployeesList() {
   useEffect(() => {
     fetchData(1, pagination.pageSize);
     fetchEmployeesForDropdown();
-  }, [searchText, statusFilter]);
+  }, [searchText, statusFilter, departmentFilter, positionFilter]);
 
   const fetchData = async (page = pagination.current, limit = pagination.pageSize) => {
     setLoading(true);
     try {
-      const res = await getEmployees({ page, limit, search: searchText, status: statusFilter });
+      const params = { page, limit, search: searchText };
+      if (statusFilter) params.status = statusFilter;
+      if (departmentFilter) params.department = departmentFilter;
+      if (positionFilter) params.position = positionFilter;
+      const res = await getEmployees(params);
       if (res.success) {
         setData(res.data);
         if (res.pagination) {
@@ -242,18 +248,19 @@ export default function EmployeesList() {
         }
         style={{ borderRadius: 12, boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}
       >
-        <div style={{ marginBottom: 16, display: 'flex', gap: 16 }}>
+        <div style={{ marginBottom: 16, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
           <Input
             placeholder="Tìm kiếm nhân viên..."
             prefix={<SearchOutlined />}
-            style={{ width: 300, borderRadius: 8 }}
+            style={{ width: 260, borderRadius: 8 }}
+            allowClear
             onChange={(e) => setSearchText(e.target.value)}
           />
           <Select
             placeholder="Lọc theo trạng thái"
             allowClear
-            style={{ width: 200 }}
-            onChange={(value) => setStatusFilter(value)}
+            style={{ width: 180 }}
+            onChange={(value) => setStatusFilter(value || '')}
           >
             <Option value="active">Đang làm việc</Option>
             <Option value="Pre-Onboarding">Thực tập sinh</Option>
@@ -262,6 +269,30 @@ export default function EmployeesList() {
             <Option value="suspended">Đình chỉ</Option>
             <Option value="inactive">Đã nghỉ việc</Option>
             <Option value="terminated">Sa thải</Option>
+          </Select>
+          <Select
+            placeholder="Lọc theo phòng ban"
+            allowClear
+            showSearch
+            optionFilterProp="children"
+            style={{ width: 200 }}
+            onChange={(value) => setDepartmentFilter(value || '')}
+          >
+            {departments.map(d => (
+              <Option key={d._id} value={d._id}>{d.name}</Option>
+            ))}
+          </Select>
+          <Select
+            placeholder="Lọc theo chức danh"
+            allowClear
+            showSearch
+            optionFilterProp="children"
+            style={{ width: 200 }}
+            onChange={(value) => setPositionFilter(value || '')}
+          >
+            {positions.map(p => (
+              <Option key={p._id} value={p._id}>{p.name}</Option>
+            ))}
           </Select>
         </div>
         <Table

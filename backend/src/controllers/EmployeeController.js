@@ -75,7 +75,7 @@ export const getAll = async (req, res) => {
 export const getAllNoPagination = async (req, res) => {
   try {
     const employees = await Employee.find({ deletedAt: null, status: { $ne: "inactive" } })
-      .select("fullName empCode")
+      .select("fullName empCode email")
       .sort({ createdAt: 1 })
       .lean();
     return res.status(200).json({ success: true, data: employees });
@@ -282,14 +282,14 @@ export const getBirthdays = async (req, res) => {
       .lean();
 
     const todayMonth = now.getMonth() + 1;
-    const todayDay   = now.getDate();
+    const todayDay = now.getDate();
     const todayLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
     const result = employees
       .map((emp) => {
         const bday = new Date(emp.birthday);
         const bdMonth = bday.getMonth() + 1;
-        const bdDay   = bday.getDate();
+        const bdDay = bday.getDate();
 
         // Xác định isToday bằng tháng+ngày trực tiếp (không phụ thuộc timezone)
         const isToday = bdMonth === todayMonth && bdDay === todayDay;
@@ -306,7 +306,7 @@ export const getBirthdays = async (req, res) => {
         // Bỏ những record bị kéo vào do fromDoy-1 nhưng thực tế đã qua hôm qua
         if (!isToday && daysLeft > days) return null;
 
-        const age = now.getFullYear() - bday.getFullYear() + (isToday ? 0 : 1);
+        const age = now.getFullYear() - bday.getFullYear();
         return {
           ...emp,
           positionName: emp.positionName || emp.position?.name || "—",

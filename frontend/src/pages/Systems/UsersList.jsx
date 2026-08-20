@@ -74,12 +74,47 @@ export default function UsersList() {
     finally { setLoading(false); }
   };
 
+  // Lưu toàn bộ dữ liệu nhân viên để dùng auto-fill
+  const [employeesRaw, setEmployeesRaw] = useState([]);
+
   const fetchOptions = async () => {
     try {
       const [rolesRes, empRes] = await Promise.all([getAllRoles(), getAllEmployeesForDropdown()]);
       if (rolesRes.success) setRoles(rolesRes.data);
-      if (empRes.success) setEmployees(empRes.data.map(e => ({ value: e._id, label: `${e.empCode} - ${e.fullName}` })));
+      if (empRes.success) {
+        setEmployeesRaw(empRes.data);
+        setEmployees(empRes.data.map(e => ({ value: e._id, label: `${e.empCode} - ${e.fullName}` })));
+      }
     } catch (e) { console.error(e); }
+  };
+
+  // Hàm chuyển fullName thành username dạng khôngs dấu, viết liền, chữ thường
+  const toUsername = (fullName = '') => {
+    return fullName
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd').replace(/Đ/g, 'D')
+      .replace(/[^a-zA-Z0-9 ]/g, '')
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, '.');
+  };
+
+  const DEFAULT_PASSWORD = 'Fumee@2026';
+
+  // Khi chọn nhân viên liên kết → tự điền username, email, password
+  const handleEmployeeSelect = (empId) => {
+    if (!empId) {
+      form.setFieldsValue({ username: undefined, email: undefined, password: undefined });
+      return;
+    }
+    const emp = employeesRaw.find(e => e._id === empId);
+    if (!emp) return;
+    form.setFieldsValue({
+      username: toUsername(emp.fullName),
+      email: emp.email || '',
+      password: DEFAULT_PASSWORD,
+    });
   };
 
   const handleOpenModal = (record = null) => {
@@ -236,6 +271,29 @@ export default function UsersList() {
         width={560}
       >
         <Form form={form} layout="vertical" onFinish={handleSubmit} style={{ marginTop: 16 }}>
+          {/* Liên kết nhân viên - hiển thị trước để auto-fill các trường bên dưới */}
+          {!editingId && (
+            <Form.Item
+              name="employee"
+              label={
+                <span>
+                  Liên kết Nhân viên
+                  <span style={{ color: '#9ca3af', fontWeight: 400, fontSize: 12, marginLeft: 8 }}>
+                    (Chọn để tự điền thông tin)
+                  </span>
+                </span>
+              }
+            >
+              <Select
+                placeholder="Tìm và chọn nhân viên..."
+                allowClear
+                showSearch
+                optionFilterProp="label"
+                options={employees}
+                onChange={handleEmployeeSelect}
+              />
+            </Form.Item>
+          )}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <Form.Item name="username" label="Tên đăng nhập" rules={[{ required: !editingId, message: 'Bắt buộc!' }]}>
               <Input disabled={!!editingId} placeholder="vd: nguyenvana" />
@@ -243,12 +301,22 @@ export default function UsersList() {
             <Form.Item name="email" label="Email" rules={[{ required: true, type: 'email', message: 'Email không hợp lệ!' }]}>
               <Input disabled={!!editingId} placeholder="vd: a@company.com" />
             </Form.Item>
-            <Form.Item name="password" label={editingId ? 'Mật khẩu mới (để trống = giữ cũ)' : 'Mật khẩu'} rules={!editingId ? [{ required: true, min: 6, message: 'Tối thiểu 6 ký tự!' }] : []}>
+            <Form.Item
+              name="password"
+              label={
+                editingId
+                  ? 'Mật khẩu mới (để trống = giữ cũ)'
+                  : <span>Mật khẩu <span style={{ color: '#9ca3af', fontWeight: 400, fontSize: 12 }}>(mặc định: {DEFAULT_PASSWORD})</span></span>
+              }
+              rules={!editingId ? [{ required: true, min: 6, message: 'Tối thiểu 6 ký tự!' }] : []}
+            >
               <Input.Password placeholder="Nhập mật khẩu" />
             </Form.Item>
-            <Form.Item name="employee" label="Liên kết Nhân viên">
-              <Select placeholder="Chọn nhân viên" allowClear showSearch optionFilterProp="label" options={employees} />
-            </Form.Item>
+            {editingId && (
+              <Form.Item name="employee" label="Liên kết Nhân viên">
+                <Select placeholder="Chọn nhân viên" allowClear showSearch optionFilterProp="label" options={employees} />
+              </Form.Item>
+            )}
           </div>
           {editingId && (
             <Form.Item name="isActive" label="Trạng thái" valuePropName="checked">

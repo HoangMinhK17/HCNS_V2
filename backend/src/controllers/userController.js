@@ -128,6 +128,45 @@ export const update = async (req, res) => {
   }
 };
 
+export const changePassword = async (req, res) => {
+  try {
+    const targetUser = await User.findOne({ _id: req.params.id, deletedAt: null });
+    if (!targetUser) return res.status(404).json({ success: false, message: "Không tìm thấy người dùng" });
+
+    const checkPassword = await bcrypt.compare(req.body.oldPassword, targetUser.password);
+    if (!checkPassword) {
+      return res.status(400).json({ success: false, message: "Mật khẩu cũ không chính xác" });
+    }
+    const updateData = { ...req.body };
+
+    if (updateData.password === updateData.oldPassword) {
+      return res.status(400).json({ success: false, message: "Mật khẩu mới và cũ không được giống nhau" });
+    }
+    const isTargetSuperAdmin = targetUser.roleCode === "super-admin";
+    const isCurrentSuperAdmin = req.user.roleCode === "super-admin";
+
+    if (isTargetSuperAdmin && !isCurrentSuperAdmin) {
+      if (updateData.password) {
+        return res.status(403).json({ success: false, message: "Không có quyền thay đổi mật khẩu của tài khoản Super Admin" });
+      }
+    }
+
+    if (updateData.password) {
+      updateData.password = await bcrypt.hash(updateData.password, 12);
+    }
+    const doc = await User.findOneAndUpdate(
+      { _id: req.params.id, deletedAt: null },
+      { $set: updateData },
+      { returnDocument: 'after', runValidators: true }
+    )
+      .populate("role", "name permissions")
+      .select("-password");
+    return res.status(200).json({ success: true, data: doc });
+  } catch (e) {
+    return res.status(500).json({ success: false, message: e.message });
+  }
+};
+
 export const remove = async (req, res) => {
   try {
     const targetUser = await User.findOne({ _id: req.params.id, deletedAt: null });

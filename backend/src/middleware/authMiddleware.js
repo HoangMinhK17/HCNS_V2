@@ -53,7 +53,6 @@ export const checkRole = (allowedRoles) => {
 export const checkPermission = (requiredPermission) => {
   return (req, res, next) => {
     const user = req.user;
-
     if (user?.roleCode === "super-admin") {
       return next();
     }

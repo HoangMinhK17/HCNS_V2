@@ -1,328 +1,609 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
-  Row, Col, Card, Statistic, Button, Tag, Space, Typography,
-  List, Avatar, message, Table, Spin
+  Row, Col, Card, Button, Tag, Typography,
+  Avatar, Spin, message,
 } from 'antd';
-import { getAllEmployeesForDropdown } from '../../utils/employeeApi';
-import { getAllDepartments } from '../../utils/departmentApi';
-import { getAllPositions } from '../../utils/positionApi';
+import { getBirthdays, getExpiringContracts, syncHRM } from '../../utils/employeeApi';
 import {
-  FolderOpenOutlined, CalendarOutlined, ReloadOutlined,
-  RiseOutlined, WarningOutlined, CheckCircleOutlined,
-  MailOutlined, FileAddOutlined, EditOutlined, ExclamationCircleOutlined,
-  PlusOutlined, FileTextOutlined, UploadOutlined, SendOutlined,
+  GiftFilled, GiftOutlined,
+  FileTextOutlined,
+  ReloadOutlined, SyncOutlined, ArrowRightOutlined,
+  WarningFilled, ClockCircleOutlined,
+  DashboardOutlined, CalendarOutlined,
+  TeamOutlined, CheckCircleOutlined,
 } from '@ant-design/icons';
 
-const { Title, Text, Paragraph } = Typography;
+const { Title, Text } = Typography;
 
-// ── Pure SVG Donut (no chart lib needed) ──
-const CHART_DATA = [
-  { label: 'Đang hiệu lực (65%)', value: 65, color: '#1677ff' },
-  { label: 'Sắp hết hạn (20%)', value: 20, color: '#f97316' },
-  { label: 'Đã hết hạn/Hủy (15%)', value: 15, color: '#d1d5db' },
+/* ─── helpers ─────────────────────────────────────────────── */
+function getInitials(name = '') {
+  const parts = name.trim().split(' ');
+  return parts[parts.length - 1]?.charAt(0)?.toUpperCase() || '?';
+}
+
+const AVATAR_COLORS = [
+  '#7c3aed', '#1677ff', '#059669', '#d97706', '#dc2626',
+  '#0891b2', '#db2777',
 ];
+function avatarColor(str = '') {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = str.charCodeAt(i) + ((h << 5) - h);
+  return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
+}
 
-function DonutChart({ data }) {
-  const size = 170, cx = 85, cy = 85, r = 62;
-  const circumference = 2 * Math.PI * r;
-  const total = data.reduce((s, d) => s + d.value, 0);
-  let offset = 0;
+/* ─── Urgency config ─────────────────────────────────────── */
+const BD_URGENCY = {
+  today:    { color: '#7c3aed', tagColor: 'purple' },
+  critical: { color: '#dc2626', tagColor: 'red' },
+  warning:  { color: '#d97706', tagColor: 'orange' },
+  normal:   { color: '#059669', tagColor: 'green' },
+};
+
+const CT_URGENCY = {
+  critical: { color: '#dc2626', tagColor: 'red' },
+  warning:  { color: '#d97706', tagColor: 'orange' },
+  normal:   { color: '#1677ff', tagColor: 'blue' },
+};
+
+function ctUrgency(daysLeft) {
+  if (daysLeft <= 7)  return 'critical';
+  if (daysLeft <= 30) return 'warning';
+  return 'normal';
+}
+
+/* ─── Stat summary card — chiều dọc đều nhau ─────────────── */
+function StatBanner({ icon, value, label, sub, color, bg, borderColor, onClick }) {
   return (
-    <div className="donut-wrapper">
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        {data.map((d, i) => {
-          const dash = (d.value / total) * circumference;
-          const el = (
-            <circle key={i} cx={cx} cy={cy} r={r} fill="none"
-              stroke={d.color} strokeWidth={28}
-              strokeDasharray={`${dash} ${circumference - dash}`}
-              strokeDashoffset={-offset} strokeLinecap="butt"
-            />
-          );
-          offset += dash;
-          return el;
-        })}
-      </svg>
-      <div className="donut-center">
-        <div className="donut-center-val">1,248</div>
-        <div className="donut-center-lbl">HĐ</div>
+    <div
+      onClick={onClick}
+      style={{
+        background: bg || '#fff',
+        border: `1.5px solid ${borderColor || '#e5e7eb'}`,
+        borderRadius: 16,
+        padding: '20px 20px 18px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'flex-start',
+        cursor: onClick ? 'pointer' : 'default',
+        transition: 'box-shadow 0.2s, transform 0.2s',
+        boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+        height: '100%',
+        minHeight: 130,
+      }}
+      className="db-stat-banner"
+    >
+      {/* Icon */}
+      <div style={{
+        width: 44, height: 44, borderRadius: 12,
+        background: color + '15',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 22, color, marginBottom: 14, flexShrink: 0,
+      }}>
+        {icon}
+      </div>
+      {/* Số */}
+      <div style={{ fontSize: 34, fontWeight: 800, color: '#1f2937', lineHeight: 1, marginBottom: 6 }}>
+        {value}
+      </div>
+      {/* Label */}
+      <div style={{ fontSize: 12.5, fontWeight: 600, color, lineHeight: 1.3, marginBottom: 4 }}>
+        {label}
+      </div>
+      {/* Sub */}
+      {sub && (
+        <div style={{ fontSize: 11, color: '#9ca3af', lineHeight: 1.4, marginTop: 'auto', paddingTop: 6 }}>
+          {sub}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── Employee row ──────────────────────────────────────── */
+function EmpRow({ emp, type }) {
+  const name  = emp.fullName || '—';
+  const code  = emp.empCode || '';
+  const dept  = emp.departmentName || '';
+  const pos   = emp.positionName  || '';
+  const color = avatarColor(name);
+
+  if (type === 'birthday') {
+    const cfg     = BD_URGENCY[emp.urgency] || BD_URGENCY.normal;
+    const isToday = emp.urgency === 'today';
+    return (
+      <div className="db-emp-row" style={{ borderLeft: `3px solid ${cfg.color}` }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            <Avatar
+              size={42}
+              style={{
+                background: isToday ? 'linear-gradient(135deg,#7c3aed,#a855f7)' : color,
+                fontWeight: 700, fontSize: 15,
+                boxShadow: isToday ? '0 0 0 3px #ddd6fe' : 'none',
+              }}
+            >
+              {getInitials(name)}
+            </Avatar>
+            {isToday && (
+              <span style={{
+                position: 'absolute', bottom: -3, right: -3,
+                fontSize: 13, lineHeight: 1, color: '#7c3aed',
+              }}>
+                <GiftFilled />
+              </span>
+            )}
+          </div>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontWeight: 700, fontSize: 13.5, color: isToday ? '#7c3aed' : '#1f2937', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {name}
+            </div>
+            <div style={{ fontSize: 11.5, color: '#6b7280' }}>{code}{pos ? ` · ${pos}` : ''}</div>
+            {dept && <div style={{ fontSize: 11.5, color: '#9ca3af' }}>{dept}</div>}
+          </div>
+        </div>
+        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+          <Tag
+            color={cfg.tagColor}
+            style={{ borderRadius: 20, fontWeight: 600, fontSize: 11.5, padding: '2px 10px', border: 'none' }}
+          >
+            {isToday
+              ? <><GiftFilled /> Hôm nay!</>
+              : <><ClockCircleOutlined /> Còn {emp.daysLeft} ngày</>}
+          </Tag>
+          {emp.birthdayFormatted && (
+            <div style={{ fontSize: 11.5, color: '#9ca3af', marginTop: 4 }}>
+              <CalendarOutlined style={{ marginRight: 4 }} />
+              {emp.birthdayFormatted}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // contract
+  const uKey = ctUrgency(emp.daysLeft);
+  const cfg  = CT_URGENCY[uKey];
+  return (
+    <div className="db-emp-row" style={{ borderLeft: `3px solid ${cfg.color}` }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
+        <Avatar size={42} style={{ background: color, fontWeight: 700, fontSize: 15, flexShrink: 0 }}>
+          {getInitials(name)}
+        </Avatar>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontWeight: 700, fontSize: 13.5, color: '#1f2937', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {name}
+          </div>
+          <div style={{ fontSize: 11.5, color: '#6b7280' }}>{code}{pos ? ` · ${pos}` : ''}</div>
+          {dept && <div style={{ fontSize: 11.5, color: '#9ca3af' }}>{dept}</div>}
+        </div>
+      </div>
+      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+        <Tag
+          color={cfg.tagColor}
+          style={{ borderRadius: 20, fontWeight: 600, fontSize: 11.5, padding: '2px 10px', border: 'none' }}
+        >
+          {uKey === 'critical'
+            ? <><WarningFilled /> Còn {emp.daysLeft} ngày</>
+            : <><ClockCircleOutlined /> Còn {emp.daysLeft} ngày</>}
+        </Tag>
+        {emp.expiryFormatted && (
+          <div style={{ fontSize: 11.5, color: '#9ca3af', marginTop: 4 }}>
+            <CalendarOutlined style={{ marginRight: 4 }} />HH: {emp.expiryFormatted}
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-// ── Activity feed data ──
-const ACTIVITIES = [
-  {
-    icon: <MailOutlined />, color: '#eff6ff', iconColor: '#1677ff',
-    title: 'Hệ thống gửi email thông báo',
-    desc: 'Đã gửi nhắc nhở gia hạn đến 15 nhân viên khối sản xuất.',
-    time: '10 phút trước',
-  },
-  {
-    icon: <FileAddOutlined />, color: '#ecfdf5', iconColor: '#059669',
-    title: 'Đồng bộ từ Base.vn thành công',
-    desc: '6 nhân viên mới vừa được đồng bộ từ trang Base.vn.',
-    time: '1 giờ trước',
-  },
-  {
-    icon: <EditOutlined />, color: '#f9fafb', iconColor: '#6b7280',
-    title: 'Cập nhật phụ lục',
-    desc: 'Nguyễn Văn A đã được cập nhật phụ lục lương mới.',
-    time: 'Hôm qua, 14:30',
-  },
-  {
-    icon: <ExclamationCircleOutlined />, color: '#fffbeb', iconColor: '#d97706',
-    title: 'Cảnh báo chậm trễ',
-    desc: '3 hợp đồng phòng IT chưa phản hồi yêu cầu gia hạn.',
-    time: 'Hôm qua, 09:15',
-  },
-];
+/* ─── Section card ──────────────────────────────────────── */
+function SectionCard({ title, subtitle, icon, accentColor, children, action, loading, empty, count, badge }) {
+  return (
+    <Card
+      styles={{ body: { padding: 0 } }}
+      style={{
+        borderRadius: 18, border: '1.5px solid #e5e7eb',
+        overflow: 'hidden', height: '100%',
+        boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+      }}
+    >
+      {/* Header */}
+      <div style={{
+        padding: '18px 22px 14px',
+        borderBottom: '1px solid #f3f4f6',
+        background: `linear-gradient(135deg, ${accentColor}08 0%, #fff 100%)`,
+        display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{
+            width: 40, height: 40, borderRadius: 12,
+            background: accentColor + '18',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 20, color: accentColor,
+          }}>
+            {icon}
+          </div>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Text strong style={{ fontSize: 15, color: '#1f2937' }}>{title}</Text>
+              {badge != null && (
+                <span style={{
+                  background: accentColor, color: '#fff',
+                  borderRadius: 12, fontSize: 11, fontWeight: 700,
+                  padding: '1px 8px', minWidth: 22, textAlign: 'center',
+                }}>
+                  {badge}
+                </span>
+              )}
+            </div>
+            {subtitle && <div style={{ fontSize: 11.5, color: '#9ca3af', marginTop: 1 }}>{subtitle}</div>}
+          </div>
+        </div>
+        {action}
+      </div>
 
+      {/* Body */}
+      <Spin spinning={loading} style={{ minHeight: 120 }}>
+        {!loading && count === 0 ? (
+          <div style={{ padding: '48px 20px', textAlign: 'center', color: '#9ca3af' }}>
+            <CheckCircleOutlined style={{ fontSize: 40, color: '#d1d5db', display: 'block', marginBottom: 10 }} />
+            <div style={{ fontSize: 13, fontWeight: 500 }}>{empty}</div>
+          </div>
+        ) : (
+          <div className="db-scroll" style={{ maxHeight: 420, overflowY: 'auto', padding: '8px 0' }}>
+            {children}
+          </div>
+        )}
+      </Spin>
+    </Card>
+  );
+}
+
+/* ─── Main Dashboard ────────────────────────────────────── */
 export default function Dashboard({ onNavigate }) {
   const [msgApi, contextHolder] = message.useMessage();
-  const [sysData, setSysData] = useState({ employees: [], departments: [], positions: [] });
-  const [sysLoading, setSysLoading] = useState(true);
+  const [birthdays,  setBirthdays]  = useState([]);
+  const [contracts,  setContracts]  = useState([]);
+  const [bdLoading,  setBdLoading]  = useState(true);
+  const [ctLoading,  setCtLoading]  = useState(true);
+  const [isSyncing,  setIsSyncing]  = useState(false);
+  const [lastUpdate, setLastUpdate] = useState(null);
 
-  useEffect(() => {
-    const fetchSystemData = async () => {
-      try {
-        const [empRes, deptRes, posRes] = await Promise.all([
-          getAllEmployeesForDropdown(),
-          getAllDepartments(),
-          getAllPositions()
-        ]);
-        setSysData({
-          employees: empRes.success ? empRes.data : [],
-          departments: deptRes.success ? deptRes.data : [],
-          positions: posRes.success ? posRes.data : []
-        });
-      } catch (error) {
-        msgApi.error('Không thể tải dữ liệu hệ thống (NV/PB/CD)');
-      } finally {
-        setSysLoading(false);
-      }
-    };
-    fetchSystemData();
+  const fetchBirthdays = useCallback(async () => {
+    setBdLoading(true);
+    try {
+      const res = await getBirthdays(30);
+      if (res.success) setBirthdays(res.employees || []);
+    } catch (_) { /* silent */ }
+    finally { setBdLoading(false); }
   }, []);
 
-  const handleBulkSend = () => {
-    msgApi.success('Đã gửi thông báo nhắc nhở đến 42 nhân sự!', 3);
+  const fetchContracts = useCallback(async () => {
+    setCtLoading(true);
+    try {
+      const res = await getExpiringContracts(60);
+      if (res.success) setContracts(res.employees || []);
+    } catch (_) { /* silent */ }
+    finally { setCtLoading(false); }
+  }, []);
+
+  const refreshAll = useCallback(() => {
+    fetchBirthdays();
+    fetchContracts();
+    setLastUpdate(new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }));
+  }, [fetchBirthdays, fetchContracts]);
+
+  const handleSyncHRM = async () => {
+    setIsSyncing(true);
+    try {
+      const res = await syncHRM();
+      if (res.success) {
+        msgApi.success(res.message || 'Đồng bộ HRM thành công!');
+        refreshAll();
+      } else {
+        msgApi.error(res.message || 'Lỗi đồng bộ HRM');
+      }
+    } catch {
+      msgApi.error('Không thể kết nối đến server để đồng bộ.');
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
+  useEffect(() => { refreshAll(); }, [refreshAll]);
+
+  /* derived stats */
+  const bdToday    = birthdays.filter(e => e.urgency === 'today');
+  const bdCritical = birthdays.filter(e => e.urgency === 'critical');
+  const bdWarning  = birthdays.filter(e => e.urgency === 'warning');
+
+  const ctCritical = contracts.filter(e => ctUrgency(e.daysLeft) === 'critical');
+  const ctWarning  = contracts.filter(e => ctUrgency(e.daysLeft) === 'warning');
+  const ctNormal   = contracts.filter(e => ctUrgency(e.daysLeft) === 'normal');
+
+  /* sorted lists */
+  const sortedBd = [...birthdays].sort((a, b) => {
+    const order = { today: 0, critical: 1, warning: 2, normal: 3 };
+    return (order[a.urgency] ?? 4) - (order[b.urgency] ?? 4) || (a.daysLeft ?? 999) - (b.daysLeft ?? 999);
+  });
+  const sortedCt = [...contracts].sort((a, b) => (a.daysLeft ?? 999) - (b.daysLeft ?? 999));
+
+  const todayStr = new Date().toLocaleDateString('vi-VN', {
+    weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
+  });
+
   return (
-    <div style={{ padding: '28px 32px', maxWidth: 1100 }}>
+    <>
       {contextHolder}
+      <style>{`
+        @keyframes db-pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.5; transform: scale(0.8); }
+        }
+        .db-stat-banner:hover {
+          box-shadow: 0 8px 24px rgba(0,0,0,0.10) !important;
+          transform: translateY(-3px);
+        }
+        .db-emp-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 12px 22px;
+          border-bottom: 1px solid #f3f4f6;
+          transition: background 0.15s;
+          background: #fff;
+        }
+        .db-emp-row:last-child { border-bottom: none; }
+        .db-emp-row:hover { background: #f9fafb; }
+        .db-scroll::-webkit-scrollbar { width: 4px; }
+        .db-scroll::-webkit-scrollbar-track { background: transparent; }
+        .db-scroll::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 4px; }
+      `}</style>
 
-      {/* Page header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
-        <div>
-          <Title level={3} style={{ margin: 0, fontWeight: 700 }}>
-            Tổng quan Nhắc nhở &amp; Gia hạn
-          </Title>
-          <Text type="secondary">Quản lý và theo dõi vòng đời hợp đồng nhân sự.</Text>
+      <div style={{ padding: '28px 32px', maxWidth: 1160 }}>
+
+        {/* ── Page header ─────────────────────────────── */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
+          <div>
+            <Title level={3} style={{ margin: 0, fontWeight: 800, color: '#1f2937', letterSpacing: -0.5 }}>
+              <DashboardOutlined style={{ marginRight: 10, color: '#1677ff' }} />
+              Tổng quan Nhân sự
+            </Title>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+              <CalendarOutlined style={{ color: '#9ca3af', fontSize: 12 }} />
+              <span style={{ fontSize: 12.5, color: '#9ca3af' }}>{todayStr}</span>
+              {lastUpdate && (
+                <span style={{ fontSize: 11.5, color: '#c4cad6', borderLeft: '1px solid #e5e7eb', paddingLeft: 8 }}>
+                  Cập nhật lúc {lastUpdate}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <Button
+              id="dashboard-sync-hrm"
+              icon={<SyncOutlined />}
+              loading={isSyncing}
+              onClick={handleSyncHRM}
+              style={{
+                borderRadius: 10, fontWeight: 600, height: 38,
+                background: 'linear-gradient(135deg,#1677ff,#0ea5e9)',
+                color: '#fff', border: 'none',
+                boxShadow: '0 2px 8px rgba(22,119,255,0.30)',
+                paddingInline: 18,
+              }}
+            >
+              Đồng bộ HRM
+            </Button>
+
+            <Button
+              id="dashboard-refresh"
+              icon={<ReloadOutlined />}
+              onClick={refreshAll}
+              loading={bdLoading || ctLoading}
+              style={{
+                borderRadius: 10, fontWeight: 600, height: 38,
+                border: '1.5px solid #e5e7eb', color: '#374151',
+                background: '#fff',
+              }}
+            >
+              Làm mới
+            </Button>
+          </div>
         </div>
-        <Button
-          type="primary" icon={<PlusOutlined />} size="large"
-          id="dashboard-create-new"
-          onClick={() => onNavigate('renewal')}
-          style={{ borderRadius: 8, fontWeight: 600 }}
-        >
-          Tạo mới HĐ
-        </Button>
-      </div>
 
-      {/* Cron info bar */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 8,
-        background: '#eff6ff', border: '1px solid #dbeafe',
-        borderRadius: 8, padding: '9px 14px',
-        fontSize: 13, color: '#1677ff', fontWeight: 500, marginBottom: 22,
-      }}>
-        <span className="cron-pulse" />
-        🔄 Hệ thống quét tự động (Cron-job). Lịch quét tiếp theo:
-        <strong style={{ marginLeft: 4 }}>Ngày 15 tháng này</strong>
-        <span style={{ color: '#6b7280', fontWeight: 400, marginLeft: 4 }}>| Quét vào ngày 01 &amp; 15 hàng tháng</span>
-      </div>
-
-      {/* Stat cards */}
-      <Row gutter={18} style={{ marginBottom: 22 }}>
-        <Col span={8}>
-          <Card className="stat-card-hover" styles={{ body: { padding: '18px 22px' } }} style={{ borderRadius: 12 }}>
-            <Statistic
-              title={<Text style={{ fontSize: 12.5, color: '#6b7280' }}>Tổng số hợp đồng</Text>}
-              value={1248}
-              prefix={<FolderOpenOutlined style={{ color: '#1677ff', fontSize: 20, marginRight: 4 }} />}
-              valueStyle={{ fontWeight: 700, fontSize: 28 }}
+        {/* ── Stat summary row — 4 card đều chiều dọc ────── */}
+        <Row gutter={[16, 16]} style={{ marginBottom: 24 }} align="stretch">
+          <Col span={6}>
+            <StatBanner
+              icon={<GiftFilled />}
+              value={bdToday.length}
+              label="Sinh nhật hôm nay"
+              sub={bdToday.length > 0
+                ? bdToday.map(e => e.fullName?.split(' ').slice(-1)[0]).join(', ')
+                : 'Không có ai hôm nay'}
+              color="#7c3aed"
+              borderColor={bdToday.length > 0 ? '#ddd6fe' : '#e5e7eb'}
+              bg={bdToday.length > 0 ? 'linear-gradient(160deg,#faf5ff 0%,#f5f3ff 100%)' : '#fff'}
+              onClick={() => onNavigate('birthdays')}
             />
-            <div style={{ marginTop: 8, fontSize: 12, color: '#059669', fontWeight: 500 }}>
-              <RiseOutlined /> +12% so với tháng trước
-            </div>
-          </Card>
-        </Col>
-        <Col span={8}>
-          <Card
-            className="stat-card-hover"
-            styles={{ body: { padding: '18px 22px' } }}
-            style={{ borderRadius: 12, borderLeft: '4px solid #f97316' }}
-          >
-            <Statistic
-              title={<Text style={{ fontSize: 12.5, color: '#6b7280' }}>Sắp hết hạn (30 ngày)</Text>}
-              value={42}
-              prefix={<CalendarOutlined style={{ color: '#f97316', fontSize: 20, marginRight: 4 }} />}
-              valueStyle={{ fontWeight: 700, fontSize: 28, color: '#f97316' }}
+          </Col>
+          <Col span={6}>
+            <StatBanner
+              icon={<GiftOutlined />}
+              value={birthdays.length}
+              label="Sinh nhật trong 30 ngày"
+              sub={`${bdCritical.length} trong 7 ngày · ${bdWarning.length} trong 14 ngày`}
+              color="#1677ff"
+              borderColor="#dbeafe"
+              bg="#f8fbff"
+              onClick={() => onNavigate('birthdays')}
             />
-            <div style={{ marginTop: 8, fontSize: 12, color: '#d97706', fontWeight: 500 }}>
-              <WarningOutlined /> Cần xử lý gấp
-            </div>
-          </Card>
-        </Col>
-        <Col span={8}>
-          <Card
-            className="stat-card-hover"
-            styles={{ body: { padding: '18px 22px' } }}
-            style={{ borderRadius: 12, borderLeft: '4px solid #059669' }}
-          >
-            <Statistic
-              title={<Text style={{ fontSize: 12.5, color: '#6b7280' }}>Đã gia hạn (Tháng này)</Text>}
-              value={86}
-              prefix={<ReloadOutlined style={{ color: '#059669', fontSize: 20, marginRight: 4 }} />}
-              valueStyle={{ fontWeight: 700, fontSize: 28, color: '#059669' }}
+          </Col>
+          <Col span={6}>
+            <StatBanner
+              icon={<WarningFilled />}
+              value={ctCritical.length}
+              label="Hợp đồng hết hạn ≤ 7 ngày"
+              sub={ctCritical.length > 0 ? 'Cần xử lý khẩn cấp!' : 'Không có trường hợp khẩn'}
+              color="#dc2626"
+              borderColor={ctCritical.length > 0 ? '#fecaca' : '#e5e7eb'}
+              bg={ctCritical.length > 0 ? 'linear-gradient(160deg,#fff5f5 0%,#fef2f2 100%)' : '#fff'}
+              onClick={() => onNavigate('contracts')}
             />
-            <div style={{ marginTop: 8, fontSize: 12, color: '#059669', fontWeight: 500 }}>
-              <CheckCircleOutlined /> Hoàn thành đúng hạn
-            </div>
-          </Card>
-        </Col>
-      </Row>
+          </Col>
+          <Col span={6}>
+            <StatBanner
+              icon={<FileTextOutlined />}
+              value={contracts.length}
+              label="Hợp đồng hết hạn ≤ 60 ngày"
+              sub={`${ctWarning.length} trong 30 ngày · ${ctNormal.length} trong 60 ngày`}
+              color="#f97316"
+              borderColor="#fed7aa"
+              bg="#fffbf5"
+              onClick={() => onNavigate('contracts')}
+            />
+          </Col>
+        </Row>
 
-      {/* Chart + Activity */}
-      <Row gutter={18} style={{ marginBottom: 22 }}>
-        <Col span={14}>
-          <Card title={<Text strong>Trạng thái hợp đồng</Text>} style={{ borderRadius: 12, height: '100%' }} styles={{ body: { padding: '20px 24px' } }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 36, height: '100%' }}>
-              <DonutChart data={CHART_DATA} />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                {CHART_DATA.map((d, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
-                    <div style={{ width: 12, height: 12, borderRadius: 3, background: d.color, flexShrink: 0 }} />
-                    <span style={{ color: '#6b7280' }}>{d.label}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </Card>
-        </Col>
+        {/* ── Urgency alert bar ────────────────────────── */}
+        {(bdToday.length > 0 || ctCritical.length > 0) && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+            background: 'linear-gradient(90deg, #faf5ff 0%, #fef2f2 100%)',
+            border: '1.5px solid #e9d5ff',
+            borderRadius: 12, padding: '10px 18px',
+            fontSize: 13, fontWeight: 600, marginBottom: 22,
+          }}>
+            <span style={{
+              width: 8, height: 8, borderRadius: '50%', background: '#7c3aed',
+              display: 'inline-block', animation: 'db-pulse 1.5s infinite', flexShrink: 0,
+            }} />
+            {bdToday.length > 0 && (
+              <span style={{ color: '#7c3aed', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <GiftFilled /> {bdToday.length} nhân viên có sinh nhật <strong>hôm nay</strong>!
+              </span>
+            )}
+            {bdToday.length > 0 && ctCritical.length > 0 && (
+              <span style={{ color: '#d1d5db' }}>·</span>
+            )}
+            {ctCritical.length > 0 && (
+              <span style={{ color: '#dc2626', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <WarningFilled /> {ctCritical.length} hợp đồng hết hạn trong <strong>7 ngày</strong>!
+              </span>
+            )}
+          </div>
+        )}
 
-        <Col span={10}>
-          <Card
-            title={<Text strong>Hoạt động gần đây</Text>}
-            extra={
-              <Button type="link" size="small" onClick={() => onNavigate('contracts')} id="dashboard-view-all">
-                Xem tất cả
-              </Button>
-            }
-            style={{ borderRadius: 12, height: '100%' }}
-            styles={{ body: { padding: '4px 16px 8px' } }}
-          >
-            <div className="activity-list">
-              {ACTIVITIES.map((a, i) => (
-                <div key={i} className="activity-item">
-                  <div className="activity-icon" style={{ background: a.color, color: a.iconColor }}>
-                    {a.icon}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#1f2937', lineHeight: 1.3 }}>{a.title}</div>
-                    <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2, lineHeight: 1.4 }}>{a.desc}</div>
-                    <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 3 }}>{a.time}</div>
-                  </div>
-                </div>
+        {/* ── Two-column main content ───────────────────── */}
+        <Row gutter={18}>
+          {/* Sinh nhật */}
+          <Col xs={24} xl={12}>
+            <SectionCard
+              title="Sinh nhật nhân viên"
+              subtitle="Trong 30 ngày tới"
+              icon={<GiftFilled />}
+              accentColor="#7c3aed"
+              loading={bdLoading}
+              count={sortedBd.length}
+              badge={sortedBd.length}
+              empty="Không có sinh nhật nào trong 30 ngày tới"
+              action={
+                <Button
+                  type="link" size="small"
+                  icon={<ArrowRightOutlined />}
+                  onClick={() => onNavigate('birthdays')}
+                  id="dashboard-go-birthday"
+                  style={{ color: '#7c3aed', fontWeight: 600, padding: '0 4px' }}
+                >
+                  Xem tất cả
+                </Button>
+              }
+            >
+              {sortedBd.map((emp) => (
+                <EmpRow key={emp._id} emp={emp} type="birthday" />
               ))}
-            </div>
-          </Card>
-        </Col>
-      </Row>
+            </SectionCard>
+          </Col>
 
-      {/* API Data Display Section */}
-      <Card
-        title={<Text strong style={{ fontSize: 16 }}>Dữ liệu Hệ thống từ API (NV / PB / CD)</Text>}
-        style={{ borderRadius: 12, marginBottom: 22 }}
-      >
-        <Spin spinning={sysLoading}>
-          <Row gutter={24}>
-            <Col span={12}>
-              <Text strong style={{ marginBottom: 12, display: 'block' }}>Danh sách Nhân viên ({sysData.employees.length})</Text>
-              <Table
-                dataSource={sysData.employees}
-                rowKey="_id"
-                size="small"
-                pagination={{ pageSize: 5 }}
-                columns={[
-                  { title: 'Mã NV', dataIndex: 'empCode', key: 'empCode' },
-                  { title: 'Họ tên', dataIndex: 'fullName', key: 'fullName' },
-                  { title: 'Trạng thái', dataIndex: 'status', key: 'status', render: s => <Tag color="blue">{s}</Tag> }
-                ]}
-              />
-            </Col>
-            <Col span={12}>
-              <Row gutter={[0, 24]}>
-                <Col span={24}>
-                  <Text strong style={{ marginBottom: 12, display: 'block' }}>Danh sách Phòng ban ({sysData.departments.length})</Text>
-                  <Table
-                    dataSource={sysData.departments}
-                    rowKey="_id"
-                    size="small"
-                    pagination={{ pageSize: 3 }}
-                    columns={[
-                      { title: 'Tên phòng', dataIndex: 'name', key: 'name' }
-                    ]}
-                  />
-                </Col>
-                <Col span={24}>
-                  <Text strong style={{ marginBottom: 12, display: 'block' }}>Danh sách Chức danh ({sysData.positions.length})</Text>
-                  <Table
-                    dataSource={sysData.positions}
-                    rowKey="_id"
-                    size="small"
-                    pagination={{ pageSize: 3 }}
-                    columns={[
-                      { title: 'Tên chức danh', dataIndex: 'name', key: 'name' }
-                    ]}
-                  />
-                </Col>
-              </Row>
-            </Col>
-          </Row>
-        </Spin>
-      </Card>
+          {/* Hợp đồng hết hạn */}
+          <Col xs={24} xl={12}>
+            <SectionCard
+              title="Hợp đồng sắp hết hạn"
+              subtitle="Trong 60 ngày tới"
+              icon={<FileTextOutlined />}
+              accentColor="#f97316"
+              loading={ctLoading}
+              count={sortedCt.length}
+              badge={sortedCt.length}
+              empty="Không có hợp đồng nào sắp hết hạn"
+              action={
+                <Button
+                  type="link" size="small"
+                  icon={<ArrowRightOutlined />}
+                  onClick={() => onNavigate('contracts')}
+                  id="dashboard-go-contracts"
+                  style={{ color: '#f97316', fontWeight: 600, padding: '0 4px' }}
+                >
+                  Xem tất cả
+                </Button>
+              }
+            >
+              {sortedCt.map((emp) => (
+                <EmpRow key={emp._id} emp={emp} type="contract" />
+              ))}
+            </SectionCard>
+          </Col>
+        </Row>
 
-      {/* Quick actions */}
-      <Space size={10}>
-        <Button
-          icon={<FileTextOutlined />}
-          id="dashboard-view-expiring"
-          onClick={() => onNavigate('contracts')}
-          style={{ borderRadius: 8 }}
-        >
-          Xem danh sách hết hạn
-        </Button>
-        <Button
-          icon={<SendOutlined />}
-          id="dashboard-bulk-send"
-          onClick={handleBulkSend}
-          style={{ borderRadius: 8 }}
-        >
-          Gửi nhắc nhở hàng loạt
-        </Button>
-        <Button
-          icon={<UploadOutlined />}
-          id="dashboard-import"
-          onClick={() => onNavigate('personnel')}
-          style={{ borderRadius: 8 }}
-        >
-          Đồng bộ từ Base.vn
-        </Button>
-      </Space>
-    </div>
+        {/* ── Quick navigation ─────────────────────────── */}
+        <div style={{ display: 'flex', gap: 10, marginTop: 22, flexWrap: 'wrap' }}>
+          <Button
+            size="large"
+            icon={<GiftFilled />}
+            id="dashboard-shortcut-birthday"
+            onClick={() => onNavigate('birthdays')}
+            style={{
+              borderRadius: 12, fontWeight: 600,
+              border: '1.5px solid #ddd6fe', color: '#7c3aed',
+              background: '#faf5ff', height: 42,
+            }}
+          >
+            Quản lý Sinh nhật
+          </Button>
+          <Button
+            size="large"
+            icon={<FileTextOutlined />}
+            id="dashboard-shortcut-contracts"
+            onClick={() => onNavigate('contracts')}
+            style={{
+              borderRadius: 12, fontWeight: 600,
+              border: '1.5px solid #fed7aa', color: '#ea580c',
+              background: '#fff7ed', height: 42,
+            }}
+          >
+            Danh sách Hợp đồng
+          </Button>
+          <Button
+            size="large"
+            icon={<TeamOutlined />}
+            id="dashboard-shortcut-employees"
+            onClick={() => onNavigate('employees')}
+            style={{
+              borderRadius: 12, fontWeight: 600,
+              border: '1.5px solid #dbeafe', color: '#1677ff',
+              background: '#f0f7ff', height: 42,
+            }}
+          >
+            Danh sách Nhân viên
+          </Button>
+        </div>
+
+      </div>
+    </>
   );
 }

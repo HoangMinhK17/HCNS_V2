@@ -5,6 +5,7 @@ import ContractsList  from './pages/Contract/ContractsList';
 import ContractRenewal from './pages/Contract/ContractRenewal';
 import OrgChart       from './pages/Hrm/OrgChart';
 import BirthdayPage   from './pages/Hrm/BirthdayPage';
+import HolidayEventPage from './pages/Hrm/HolidayEventPage';
 import EmployeesList  from './pages/Hrm/EmployeesList';
 import DepartmentsList from './pages/Hrm/DepartmentsList';
 import PositionsList  from './pages/Hrm/PositionsList';
@@ -57,6 +58,11 @@ const ROUTES = [
     path: 'birthdays',
     sidebarKey: 'birthdays',
     component: ({ navigate }) => <BirthdayPage onNavigate={navigate} />,
+  },
+  {
+    path: 'holiday-events',
+    sidebarKey: 'holiday-events',
+    component: ({ navigate }) => <HolidayEventPage onNavigate={navigate} />,
   },
   {
     path: 'contracts',
