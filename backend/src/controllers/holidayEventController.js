@@ -2,22 +2,13 @@ import HolidayEvent from "../models/HolidayEvent.js";
 import Employee from "../models/Employee.js";
 import { sendZaloCampaign } from "../utils/crmZaloService.js";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// HELPER: Render template – thay {{name}} bằng giá trị truyền vào
-// ─────────────────────────────────────────────────────────────────────────────
 const renderTemplate = (template, vars = {}) => {
   if (!template) return "";
   return template.replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] ?? `{{${key}}}`);
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// HELPER: Lấy user từ token (gắn trong middleware)
-// ─────────────────────────────────────────────────────────────────────────────
 const getUserId = (req) => req.user?._id || req.user?.id || null;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// GET /holiday-events – Lấy danh sách sự kiện nghỉ lễ (Phân trang BE)
-// ─────────────────────────────────────────────────────────────────────────────
 export const getHolidayEvents = async (req, res) => {
   try {
     const { year, month, upcoming, page = 1, limit = 10 } = req.query;
@@ -111,11 +102,6 @@ export const getHolidayEvents = async (req, res) => {
   }
 };
 
-
-
-// ─────────────────────────────────────────────────────────────────────────────
-// POST /holiday-events – Tạo sự kiện nghỉ lễ mới
-// ─────────────────────────────────────────────────────────────────────────────
 export const createHolidayEvent = async (req, res) => {
   try {
     const {
@@ -163,9 +149,6 @@ export const createHolidayEvent = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PUT /holiday-events/:id – Cập nhật sự kiện nghỉ lễ
-// ─────────────────────────────────────────────────────────────────────────────
 export const updateHolidayEvent = async (req, res) => {
   try {
     const { id } = req.params;
@@ -219,9 +202,6 @@ export const updateHolidayEvent = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// DELETE /holiday-events/:id – Xóa sự kiện nghỉ lễ
-// ─────────────────────────────────────────────────────────────────────────────
 export const deleteHolidayEvent = async (req, res) => {
   try {
     const { id } = req.params;
@@ -236,10 +216,6 @@ export const deleteHolidayEvent = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// POST /holiday-events/:id/trigger – Kích hoạt gửi thủ công (dùng để test)
-// type query: "announcement" | "wish" | "both" (default: "both")
-// ─────────────────────────────────────────────────────────────────────────────
 export const triggerHolidayEventManual = async (req, res) => {
   try {
     const { id } = req.params;
@@ -258,7 +234,6 @@ export const triggerHolidayEventManual = async (req, res) => {
       });
     }
 
-    // Lấy tất cả nhân viên active có số điện thoại
     const employees = await Employee.find({
       status: { $nin: ["inactive", "terminated"] },
       phone: { $nin: [null, ""] },
@@ -278,7 +253,6 @@ export const triggerHolidayEventManual = async (req, res) => {
     const results = {};
     const dateLabel = new Date(event.start_date).toLocaleDateString("vi-VN");
 
-    // ── Gửi thông báo lịch nghỉ ──────────────────────────────
     if ((type === "announcement" || type === "both") && event.announcement_template) {
       const content = renderTemplate(event.announcement_template, {
         title: event.title,
@@ -307,7 +281,6 @@ export const triggerHolidayEventManual = async (req, res) => {
       }
     }
 
-    // ── Gửi lời chúc ngày nghỉ ────────────────────────────────
     if ((type === "wish" || type === "both") && event.wish_template) {
       const content = renderTemplate(event.wish_template, {
         title: event.title,

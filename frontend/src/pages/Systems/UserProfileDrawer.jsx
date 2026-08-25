@@ -375,7 +375,6 @@ function ChangePasswordTab({ form, loading, success, onFinish, onReset }) {
                 style={{ borderRadius: 8 }}
               />
             </Form.Item>
-
             <Form.Item
               name="confirmPassword" label="Xác nhận mật khẩu"
               dependencies={['newPassword']}

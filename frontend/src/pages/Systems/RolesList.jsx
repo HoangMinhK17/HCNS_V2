@@ -4,8 +4,8 @@ import {
   Modal, Form, Checkbox, Popconfirm, Tooltip, Divider, Row, Col, Badge
 } from 'antd';
 import {
-  PlusOutlined, SearchOutlined, EditOutlined, DeleteOutlined,
-  SafetyOutlined, CheckOutlined, CloseOutlined
+  PlusOutlined, EditOutlined, DeleteOutlined,
+  SafetyOutlined, CheckOutlined,
 } from '@ant-design/icons';
 import { getAll, create, update, remove } from '../../utils/roleApi';
 
@@ -81,68 +81,78 @@ const PERMISSION_GROUPS = [
     ],
   },
   {
-    group: 'Báo cáo',
+    group: 'Quản lý nghỉ lễ',
     color: '#f0688bff',
     permissions: [
-      { key: 'report:view', label: 'Xem báo cáo' },
+      { key: 'holiday:view', label: 'Xem' },
+      { key: 'holiday:create', label: 'Tạo mới' },
+      { key: 'holiday:edit', label: 'Chỉnh sửa' },
+      { key: 'holiday:delete', label: 'Xóa' },
     ],
   },
-  {
-    group: 'Thiết lập',
-    color: '#c6c6c7ff',
-    permissions: [
-      { key: 'system:settings', label: 'Cài đặt hệ thống' },
-    ],
-  },
-  {
-    group: 'Ca & Lịch làm việc',
-    color: '#8b5cf6',
-    permissions: [
-      { key: 'shift:view', label: 'Xem' },
-      { key: 'shift:create', label: 'Tạo mới' },
-      { key: 'shift:edit', label: 'Chỉnh sửa' },
-      { key: 'shift:delete', label: 'Xóa' },
-      { key: 'shift:assign', label: 'Phân ca' },
-    ],
-  },
-  {
-    group: 'Chấm công',
-    color: '#3b82f6',
-    permissions: [
-      { key: 'attendance:view', label: 'Xem' },
-      { key: 'attendance:checkin', label: 'Check-in/out' },
-      { key: 'attendance:manual-edit', label: 'Chỉnh sửa tay' },
-      { key: 'attendance:approve', label: 'Duyệt công' },
-      { key: 'attendance:export', label: 'Xuất báo cáo' },
-    ],
-  },
-  {
-    group: 'ESS (Cổng nhân viên)',
-    color: '#10b981',
-    permissions: [
-      { key: 'ess:leave', label: 'Nghỉ phép' },
-      { key: 'ess:overtime', label: 'Tăng ca' },
-      { key: 'ess:asset', label: 'Tài sản' },
-    ],
-  },
-  {
-    group: 'Phê duyệt',
-    color: '#f59e0b',
-    permissions: [
-      { key: 'approval:view', label: 'Xem đơn' },
-      { key: 'approval:manage', label: 'Quản lý/Duyệt đơn' },
-    ],
-  },
-  {
-    group: 'Cấu hình hệ thống',
-    color: '#6b7280',
-    permissions: [
-      { key: 'location:manage', label: 'Quản lý địa điểm' },
-      { key: 'holiday:manage', label: 'Quản lý ngày lễ' },
-      { key: 'leavetype:manage', label: 'Quản lý loại phép' },
-      { key: 'leavebalance:manage', label: 'Quản lý quỹ phép' },
-    ],
-  },
+  // {
+  //   group: 'Báo cáo',
+  //   color: '#f0688bff',
+  //   permissions: [
+  //     { key: 'report:view', label: 'Xem báo cáo' },
+  //   ],
+  // },
+  // {
+  //   group: 'Thiết lập',
+  //   color: '#c6c6c7ff',
+  //   permissions: [
+  //     { key: 'system:settings', label: 'Cài đặt hệ thống' },
+  //   ],
+  // },
+  // {
+  //   group: 'Ca & Lịch làm việc',
+  //   color: '#8b5cf6',
+  //   permissions: [
+  //     { key: 'shift:view', label: 'Xem' },
+  //     { key: 'shift:create', label: 'Tạo mới' },
+  //     { key: 'shift:edit', label: 'Chỉnh sửa' },
+  //     { key: 'shift:delete', label: 'Xóa' },
+  //     { key: 'shift:assign', label: 'Phân ca' },
+  //   ],
+  // },
+  // {
+  //   group: 'Chấm công',
+  //   color: '#3b82f6',
+  //   permissions: [
+  //     { key: 'attendance:view', label: 'Xem' },
+  //     { key: 'attendance:checkin', label: 'Check-in/out' },
+  //     { key: 'attendance:manual-edit', label: 'Chỉnh sửa tay' },
+  //     { key: 'attendance:approve', label: 'Duyệt công' },
+  //     { key: 'attendance:export', label: 'Xuất báo cáo' },
+  //   ],
+  // },
+  // {
+  //   group: 'ESS (Cổng nhân viên)',
+  //   color: '#10b981',
+  //   permissions: [
+  //     { key: 'ess:leave', label: 'Nghỉ phép' },
+  //     { key: 'ess:overtime', label: 'Tăng ca' },
+  //     { key: 'ess:asset', label: 'Tài sản' },
+  //   ],
+  // },
+  // {
+  //   group: 'Phê duyệt',
+  //   color: '#f59e0b',
+  //   permissions: [
+  //     { key: 'approval:view', label: 'Xem đơn' },
+  //     { key: 'approval:manage', label: 'Quản lý/Duyệt đơn' },
+  //   ],
+  // },
+  // {
+  //   group: 'Cấu hình hệ thống',
+  //   color: '#6b7280',
+  //   permissions: [
+  //     { key: 'location:manage', label: 'Quản lý địa điểm' },
+  //     { key: 'holiday:manage', label: 'Quản lý ngày lễ' },
+  //     { key: 'leavetype:manage', label: 'Quản lý loại phép' },
+  //     { key: 'leavebalance:manage', label: 'Quản lý quỹ phép' },
+  //   ],
+  // },
   {
     group: 'Sinh nhật',
     color: '#6b7280',
@@ -234,7 +244,7 @@ function PermissionGroupCheckbox({ value = [], onChange }) {
         </Checkbox>
         {isAllChecked && (
           <Tag color="blue" style={{ fontSize: 11, fontWeight: 600, borderRadius: 20 }}>
-            ✓ Toàn quyền
+            <CheckOutlined /> Toàn quyền
           </Tag>
         )}
       </div>

@@ -39,6 +39,8 @@ export const ALL_PERMISSIONS = [
 
   //birthday
   "birthday:view", "birthday:create", "birthday:edit", "birthday:delete",
+  //holiday
+  "holiday:view", "holiday:create", "holiday:edit", "holiday:delete",
 ];
 
 const RoleSchema = new mongoose.Schema(

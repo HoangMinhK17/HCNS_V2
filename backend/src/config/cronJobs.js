@@ -607,7 +607,7 @@ const initCronJobs = () => {
 
               try {
                 await sendZaloCampaign({
-                  campaignName: `[Thông báo nghỉ lễ] ${event.title} – ${dateLabel}`,
+                  campaignName: `[Thông báo nghỉ lễ] ${event.title}`,
                   channelId,
                   content,
                   phones,
@@ -639,7 +639,7 @@ const initCronJobs = () => {
 
               try {
                 await sendZaloCampaign({
-                  campaignName: `[Lời chúc] ${event.title} – ${dateLabel}`,
+                  campaignName: `[Lời chúc] ${event.title}`,
                   channelId,
                   content,
                   phones,
