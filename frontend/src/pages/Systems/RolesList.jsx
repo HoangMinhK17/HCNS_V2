@@ -90,6 +90,17 @@ const PERMISSION_GROUPS = [
       { key: 'holiday:delete', label: 'Xóa' },
     ],
   },
+  {
+    group: 'Onboard AI',
+    color: '#fb9f01ff',
+    permissions: [
+      { key: 'onboard:get', label: 'Xem thông tin' },
+      { key: 'onboard:update', label: 'Cập nhật thông tin' },
+      { key: 'onboard:delete', label: 'Xóa thông tin' },
+      { key: 'onboard:upload', label: 'Tải lên tài liệu' },
+      { key: 'onboard:send', label: 'Gửi tài liệu' },
+    ],
+  },
   // {
   //   group: 'Báo cáo',
   //   color: '#f0688bff',

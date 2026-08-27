@@ -4,6 +4,7 @@ import { runHRMSync } from "../controllers/hrmSyncController.js";
 import Employee from "../models/Employee.js";
 import BirthDay from "../models/BirthDay.js";
 import HolidayEvent from "../models/HolidayEvent.js";
+import OnboardingSetting from "../models/OnboardingSetting.js";
 import { sendMail } from "./sendMail.js";
 import { loginCRM, sendZaloCampaign } from "../utils/crmZaloService.js";
 
@@ -668,11 +669,85 @@ const initCronJobs = () => {
     { timezone: "Asia/Ho_Chi_Minh" }
   );
 
+  // ── JOB 5: Tự động gửi Zalo Onboarding cho nhân viên mới ──
+  // Chạy mỗi ngày lúc 08:30 – tìm tất cả Pre-Onboarding/probation chưa được gửi
+  cron.schedule(
+    "30 8 * * *",
+    async () => {
+      console.log("[Cron/Onboarding] ⏰ Bắt đầu quét gửi Zalo onboarding...");
+      try {
+        const channelId = process.env.ID_ZALO_CRM;
+        if (!channelId) {
+          console.warn("[Cron/Onboarding] ⚠️ Thiếu ID_ZALO_CRM trong .env, bỏ qua.");
+          return;
+        }
+
+        // Lấy nhân viên onboarding chưa gửi
+        const employees = await Employee.find({
+          deletedAt: null,
+          status: { $in: ["Pre-Onboarding"] },
+          onboardingZaloSent: { $ne: true },
+          phone: { $nin: [null, ""] },
+        }).lean();
+
+        if (employees.length === 0) {
+          console.log("[Cron/Onboarding] ✅ Không có nhân viên nào cần gửi onboarding.");
+          return;
+        }
+
+        console.log(`[Cron/Onboarding] 📄 Tìm thấy ${employees.length} nhân viên cần gửi.`);
+
+        // Lấy cấu hình tài liệu (theo company của nhân viên đầu tiên – single-company)
+        const companyId = employees[0].company;
+        const setting = await OnboardingSetting.findOne({ company: companyId }).lean();
+        const documents = setting?.documents || [];
+        const template  = setting?.welcomeMessageTemplate ||
+          " Chào mừng {fullName} gia nhập công ty!\n\n{documentsBlock}\n\nNếu có thắc mắc hãy liên hệ HCNS nhé!";
+
+        const buildMsg = (emp) => {
+          const docLines = documents.map((d, i) => `${i + 1}. ${d.fileName}: ${d.fileUrl}`).join("\n");
+          return template
+            .replace(/{fullName}/g, emp.fullName || "bạn")
+            .replace(/{empCode}/g,  emp.empCode  || "")
+            .replace(/{documentsBlock}/g, docLines || "(Chưa có tài liệu)");
+        };
+
+        let sentCount = 0;
+        for (const emp of employees) {
+          try {
+            const content = buildMsg(emp);
+            await sendZaloCampaign({
+              campaignName: `Onboarding_${emp.empCode}_${Date.now()}`,
+              channelId,
+              content,
+              phones: [emp.phone],
+            });
+            // Đánh dấu đã gửi – chỉ gửi 1 lần duy nhất
+            await Employee.findByIdAndUpdate(emp._id, {
+              onboardingZaloSent:   true,
+              onboardingZaloSentAt: new Date(),
+            });
+            sentCount++;
+            console.log(`[Cron/Onboarding] ✅ Đã gửi: ${emp.fullName} (${emp.empCode}) → ${emp.phone}`);
+          } catch (empErr) {
+            console.error(`[Cron/Onboarding] ❌ Gửi thất bại cho ${emp.fullName}:`, empErr.message);
+          }
+        }
+
+        console.log(`[Cron/Onboarding] 🎉 Hoàn tất: đã gửi ${sentCount}/${employees.length} nhân viên.`);
+      } catch (err) {
+        console.error("[Cron/Onboarding] ❌ Lỗi tổng quát:", err.message);
+      }
+    },
+    { timezone: "Asia/Ho_Chi_Minh" }
+  );
+
   console.log("[Cron] Đã đăng ký:");
   console.log("  📡 Job 1 — Auto-sync HRM API: Mỗi ngày lúc 07:00");
   console.log("  📧 Job 2 — Cảnh báo hợp đồng: Mỗi ngày lúc 08:00 (gửi ở mốc 30/14/7/3/1 ngày)");
   console.log("  🎂 Job 3 — Thông báo sinh nhật (Email + Zalo): Mỗi ngày lúc 07:30");
   console.log("  🎉 Job 4 — Thông báo & lời chúc nghỉ lễ (Zalo): Mỗi ngày lúc 08:00");
+  console.log("  📄 Job 5 — Gửi Zalo Onboarding tài liệu (nhân viên mới): Mỗi ngày lúc 08:30");
 };
 
 export default initCronJobs;

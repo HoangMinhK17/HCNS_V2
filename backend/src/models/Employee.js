@@ -135,6 +135,10 @@ const EmployeeSchema = new mongoose.Schema(
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     deletedAt: { type: Date, default: null },
+
+    // ── Onboarding Zalo ────────────────────────────────────────
+    onboardingZaloSent:   { type: Boolean, default: false },
+    onboardingZaloSentAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

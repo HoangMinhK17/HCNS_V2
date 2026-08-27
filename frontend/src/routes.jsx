@@ -12,6 +12,7 @@ import PositionsList  from './pages/Hrm/PositionsList';
 import UsersList      from './pages/Systems/UsersList';
 import RolesList      from './pages/Systems/RolesList';
 import CompanyProfile from './pages/Systems/CompanyProfile';
+import OnboardingManager from './pages/Systems/OnboardingManager';
 
 // Phase 2 – Operations & ESS
 import CheckinPortal      from './pages/ESS/CheckinPortal';
@@ -91,6 +92,11 @@ const ROUTES = [
     path: 'companies',
     sidebarKey: 'companies',
     component: ({ navigate }) => <CompanyProfile onNavigate={navigate} />,
+  },
+  {
+    path: 'onboarding',
+    sidebarKey: 'onboarding',
+    component: ({ navigate }) => <OnboardingManager onNavigate={navigate} />,
   },
 
   // ── Phase 2 Routes ──────────────────────────────────────────

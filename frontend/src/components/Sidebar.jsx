@@ -19,6 +19,7 @@ import {
   LaptopOutlined,
   MailOutlined,
   FieldTimeOutlined,
+  RobotOutlined,
 } from '@ant-design/icons';
 import { Menu, Avatar, Typography, Tag } from 'antd';
 
@@ -190,6 +191,12 @@ const MENU_CONFIG = [
         key: 'users',
         icon: <UserOutlined />,
         label: 'Người dùng',
+        roles: [ROLES.SUPER_ADMIN, ROLES.HR_ADMIN],
+      },
+      {
+        key: 'onboarding',
+        icon: <RobotOutlined />,
+        label: 'Onboarding AI',
         roles: [ROLES.SUPER_ADMIN, ROLES.HR_ADMIN],
       },
       // {
