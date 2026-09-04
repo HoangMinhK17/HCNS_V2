@@ -210,7 +210,7 @@ export default function BirthdayPage() {
         .birthday-today-row:hover td { background: #f5f3ff !important; }
       `}</style>
 
-      <div style={{ padding: '28px 32px', maxWidth: 1200 }}>
+      <div style={{ padding: 'clamp(16px,3vw,28px) clamp(12px,3vw,32px)', width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
         <Tabs
           defaultActiveKey="1"
           items={[
@@ -220,7 +220,7 @@ export default function BirthdayPage() {
               children: (
                 <>
                   {/* ── Header ── */}
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 12 }}>
           <div>
             <Title level={4} style={{ margin: 0, fontWeight: 700 }}>
                Sinh nhật nhân viên

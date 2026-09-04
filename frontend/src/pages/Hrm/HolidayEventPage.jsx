@@ -136,8 +136,8 @@ function HolidayEventFormModal({ open, onClose, onSaved, initial }) {
         </Form.Item>
 
         {/* Ngày tháng */}
-        <Row gutter={12}>
-          <Col span={8}>
+        <Row gutter={[12, 0]}>
+          <Col xs={24} sm={8}>
             <Form.Item
               name="start_date"
               label="Ngày bắt đầu nghỉ"
@@ -146,7 +146,7 @@ function HolidayEventFormModal({ open, onClose, onSaved, initial }) {
               <DatePicker format="DD/MM/YYYY" style={{ width: '100%' }} placeholder="Chọn ngày" />
             </Form.Item>
           </Col>
-          <Col span={8}>
+          <Col xs={24} sm={8}>
             <Form.Item
               name="end_date"
               label="Ngày kết thúc nghỉ"
@@ -155,7 +155,7 @@ function HolidayEventFormModal({ open, onClose, onSaved, initial }) {
               <DatePicker format="DD/MM/YYYY" style={{ width: '100%' }} placeholder="Chọn ngày" />
             </Form.Item>
           </Col>
-          <Col span={8}>
+          <Col xs={24} sm={8}>
             <Form.Item name="back_to_work_date" label="Ngày đi làm lại">
               <DatePicker format="DD/MM/YYYY" style={{ width: '100%' }} placeholder="Tuỳ chọn" />
             </Form.Item>
@@ -364,6 +364,7 @@ function EventTimeline({ events }) {
               borderRadius: 10,
               border: `1px solid ${status.color}22`,
               borderLeft: `4px solid ${status.color}`,
+              flexWrap: 'wrap',
             }}
           >
             {/* Icon trạng thái */}
@@ -375,7 +376,7 @@ function EventTimeline({ events }) {
               {status.icon}
             </div>
 
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontWeight: 700, fontSize: 14, color: '#111827', marginBottom: 6 }}>
                 {event.title}
               </div>
@@ -407,7 +408,7 @@ function EventTimeline({ events }) {
               }}>
                 {status.label}
               </span>
-              <div style={{ marginTop: 6, display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+              <div style={{ marginTop: 6, display: 'flex', gap: 4, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                 {event.is_notified && (
                   <Tooltip title={`Đã gửi thông báo lúc ${event.notified_at ? dayjs(event.notified_at).format('HH:mm DD/MM') : ''} (${event.notified_count || 0} người)`}>
                     <Tag color="blue" style={{ margin: 0, fontSize: 11 }}>
@@ -774,10 +775,10 @@ export default function HolidayEventPage() {
         </Space>
       ),
       children: (
-        <div style={{ maxWidth: 800 }}>
+        <div style={{ width: '100%', maxWidth: '100%' }}>
           {/* Stats */}
-          <Row gutter={16} style={{ marginBottom: 20 }}>
-            <Col span={8}>
+          <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
+            <Col xs={24} sm={8}>
               <Card style={{ borderRadius: 12, border: '1px solid #dbeafe' }}>
                 <Statistic
                   title={<Text type="secondary" style={{ fontSize: 12.5 }}>Sự kiện sắp tới</Text>}
@@ -787,7 +788,7 @@ export default function HolidayEventPage() {
                 />
               </Card>
             </Col>
-            <Col span={8}>
+            <Col xs={24} sm={8}>
               <Card style={{ borderRadius: 12, border: '1px solid #fde8d0' }}>
                 <Statistic
                   title={<Text type="secondary" style={{ fontSize: 12.5 }}>Chờ thông báo</Text>}
@@ -797,7 +798,7 @@ export default function HolidayEventPage() {
                 />
               </Card>
             </Col>
-            <Col span={8}>
+            <Col xs={24} sm={8}>
               <Card style={{ borderRadius: 12, border: '1px solid #e9d5ff' }}>
                 <Statistic
                   title={<Text type="secondary" style={{ fontSize: 12.5 }}>Chờ lời chúc hôm nay</Text>}
@@ -872,15 +873,15 @@ export default function HolidayEventPage() {
         }
       `}</style>
 
-      <div style={{ padding: '28px 32px', maxWidth: 1200 }}>
+      <div style={{ padding: 'clamp(16px, 3vw, 28px) clamp(12px, 3vw, 32px)', width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
-          <div>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <Title level={4} style={{ margin: 0, fontWeight: 700 }}>
               <GiftOutlined style={{ marginRight: 8, color: '#1677ff' }} />
               Quản lý Sự kiện Nghỉ lễ
             </Title>
-            <div style={{ marginTop: 10 }}>
+            <div style={{ marginTop: 10, flexWrap: 'wrap' }}>
               <span style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6,
                 background: '#eff6ff', border: '1px solid #dbeafe',
@@ -888,7 +889,7 @@ export default function HolidayEventPage() {
                 fontSize: 12.5, color: '#1677ff', fontWeight: 500,
               }}>
                 <RobotOutlined />
-                AI tự động gửi thông báo &amp; lời chúc qua Zalo – Cron Job 08:00 mỗi ngày
+                AI tự động gửi thông báo & lời chúc qua Zalo – Cron Job 08:00 mỗi ngày
               </span>
             </div>
           </div>

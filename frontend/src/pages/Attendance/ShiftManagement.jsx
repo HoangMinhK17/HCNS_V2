@@ -163,8 +163,8 @@ export default function ShiftManagement() {
   ];
 
   return (
-    <div style={{ padding: '24px 28px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
+    <div style={{ padding: 'clamp(16px,3vw,24px) clamp(12px,3vw,28px)', width: '100%', boxSizing: 'border-box' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <Title level={3} style={{ margin: 0 }}>📅 Lịch ca kíp</Title>
           <Text type="secondary">Xem và phân công ca làm việc cho nhân viên</Text>
@@ -233,13 +233,13 @@ export default function ShiftManagement() {
               {employees.map(e => <Option key={e._id} value={e._id}>{e.fullName} ({e.empCode})</Option>)}
             </Select>
           </Form.Item>
-          <Row gutter={12}>
-            <Col span={12}>
+          <Row gutter={[12, 0]}>
+            <Col xs={24} sm={12}>
               <Form.Item label="Khoảng ngày" name="dateRange" rules={[{ required: true }]}>
                 <DatePicker.RangePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
               </Form.Item>
             </Col>
-            <Col span={12}>
+            <Col xs={24} sm={12}>
               <Form.Item label="Ngày nghỉ?" name="isOff" initialValue={false}>
                 <Select>
                   <Option value={false}>Có đi làm</Option>

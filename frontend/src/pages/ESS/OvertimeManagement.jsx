@@ -148,8 +148,8 @@ export default function OvertimeManagement() {
   ];
 
   return (
-    <div style={{ padding: '24px 28px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
+    <div style={{ padding: 'clamp(16px,3vw,24px) clamp(12px,3vw,28px)', width: '100%', boxSizing: 'border-box' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <Title level={3} style={{ margin: 0 }}>⚡ Làm thêm giờ (OT)</Title>
           <Text type="secondary">Đăng ký và theo dõi giờ làm thêm</Text>
@@ -160,20 +160,20 @@ export default function OvertimeManagement() {
       </div>
 
       {/* Stats */}
-      <Row gutter={14} style={{ marginBottom: 20 }}>
-        <Col span={8}>
+      <Row gutter={[14, 14]} style={{ marginBottom: 20 }}>
+        <Col xs={24} sm={8}>
           <Card bordered={false} style={{ borderRadius: 14, background: '#fffbeb', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
             <Statistic title={<Text style={{ fontSize: 12, color: '#6b7280' }}>OT tháng này (đã duyệt)</Text>}
               value={totalHours} suffix="giờ" valueStyle={{ color: '#f59e0b', fontWeight: 700 }} />
           </Card>
         </Col>
-        <Col span={8}>
+        <Col xs={24} sm={8}>
           <Card bordered={false} style={{ borderRadius: 14, background: '#eff6ff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
             <Statistic title={<Text style={{ fontSize: 12, color: '#6b7280' }}>Chờ phê duyệt</Text>}
               value={pending} suffix="đơn" valueStyle={{ color: '#1677ff', fontWeight: 700 }} />
           </Card>
         </Col>
-        <Col span={8}>
+        <Col xs={24} sm={8}>
           <Card bordered={false} style={{ borderRadius: 14, background: '#f0fdf4', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
             <Statistic title={<Text style={{ fontSize: 12, color: '#6b7280' }}>Tổng đơn</Text>}
               value={requests.length} suffix="đơn" valueStyle={{ color: '#10b981', fontWeight: 700 }} />
@@ -194,13 +194,13 @@ export default function OvertimeManagement() {
           <Form.Item label="Ngày làm OT" name="workDate" rules={[{ required: true }]}>
             <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
           </Form.Item>
-          <Row gutter={12}>
-            <Col span={12}>
+          <Row gutter={[12, 0]}>
+            <Col xs={24} sm={12}>
               <Form.Item label="Bắt đầu" name="fromTime" rules={[{ required: true }]}>
                 <DatePicker.TimePicker format="HH:mm" minuteStep={15} style={{ width: '100%' }} />
               </Form.Item>
             </Col>
-            <Col span={12}>
+            <Col xs={24} sm={12}>
               <Form.Item label="Kết thúc" name="toTime" rules={[{ required: true }]}>
                 <DatePicker.TimePicker format="HH:mm" minuteStep={15} style={{ width: '100%' }} />
               </Form.Item>

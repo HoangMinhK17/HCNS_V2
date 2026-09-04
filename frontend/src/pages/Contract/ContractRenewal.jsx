@@ -214,7 +214,7 @@ export default function ContractRenewal({ employee, onNavigate }) {
   };
 
   return (
-    <div style={{ padding: '28px 32px', maxWidth: 1100 }}>
+    <div style={{ padding: 'clamp(16px, 3vw, 28px) clamp(12px, 3vw, 32px)', width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
       {contextHolder}
 
       {/* Back */}
@@ -236,12 +236,12 @@ export default function ContractRenewal({ employee, onNavigate }) {
       </Text>
 
       {/* Steps */}
-      <Card style={{ borderRadius: 12, marginBottom: 22 }} styles={{ body: { padding: '18px 24px' } }}>
+      <Card style={{ borderRadius: 12, marginBottom: 22 }} styles={{ body: { padding: '16px 20px' } }}>
         <Steps
           current={currentStep}
           items={STEP_ITEMS}
           size="small"
-          style={{ maxWidth: 800 }}
+          style={{ maxWidth: '100%' }}
         />
       </Card>
 
@@ -308,10 +308,10 @@ export default function ContractRenewal({ employee, onNavigate }) {
 
       {/* Two-column grid */}
       <Spin spinning={loadingMeta} tip="Đang tải dữ liệu...">
-        <Row gutter={20} align="top">
+        <Row gutter={[20, 20]} align="top">
 
           {/* Left: Old contract */}
-          <Col span={12}>
+          <Col xs={24} lg={12}>
             <Card
               title={
                 <Space>
@@ -372,7 +372,7 @@ export default function ContractRenewal({ employee, onNavigate }) {
           </Col>
 
           {/* Right: New contract form */}
-          <Col span={12}>
+          <Col xs={24} lg={12}>
             <Card
               title={
                 <Space>
@@ -539,7 +539,7 @@ export default function ContractRenewal({ employee, onNavigate }) {
 
       {/* Footer actions */}
       <Divider style={{ margin: '22px 0 18px' }} />
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, flexWrap: 'wrap' }}>
         <Button
           id="renewal-cancel"
           onClick={() => onNavigate('contracts')}

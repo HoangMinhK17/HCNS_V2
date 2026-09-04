@@ -211,9 +211,9 @@ export default function AssetRequestPage() {
     : [...baseColumns, actionColumn];
 
   return (
-    <div style={{ padding: '24px 28px' }}>
+    <div style={{ padding: 'clamp(16px,3vw,24px) clamp(12px,3vw,28px)', width: '100%', boxSizing: 'border-box' }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <Title level={3} style={{ margin: 0 }}>
             🖥️ Đề xuất tài sản
@@ -269,15 +269,15 @@ export default function AssetRequestPage() {
         okText="Tạo" cancelText="Hủy" width={520}
       >
         <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
-          <Row gutter={12}>
-            <Col span={12}>
+          <Row gutter={[12, 0]}>
+            <Col xs={24} sm={12}>
               <Form.Item label="Loại đề xuất" name="requestType" rules={[{ required: true, message: 'Vui lòng chọn loại' }]}>
                 <Select placeholder="Chọn loại">
                   {Object.entries(REQUEST_TYPE).map(([k, v]) => <Option key={k} value={k}>{v.label}</Option>)}
                 </Select>
               </Form.Item>
             </Col>
-            <Col span={12}>
+            <Col xs={24} sm={12}>
               <Form.Item label="Mức độ ưu tiên" name="urgency" initialValue="medium">
                 <Select>
                   {Object.entries(URGENCY).map(([k, v]) => <Option key={k} value={k}>{v.label}</Option>)}
@@ -285,13 +285,13 @@ export default function AssetRequestPage() {
               </Form.Item>
             </Col>
           </Row>
-          <Row gutter={12}>
-            <Col span={16}>
+          <Row gutter={[12, 0]}>
+            <Col xs={24} sm={16}>
               <Form.Item label="Tên tài sản" name="assetName" rules={[{ required: true, message: 'Vui lòng nhập tên tài sản' }]}>
-                <Input placeholder="VD: Laptop Dell XPS 15, Ghế công thái học..." />
+                <Input placeholder="VĐ: Laptop Dell XPS 15, Ghế công thái học..." />
               </Form.Item>
             </Col>
-            <Col span={8}>
+            <Col xs={24} sm={8}>
               <Form.Item label="Số lượng" name="quantity" initialValue={1}>
                 <Input type="number" min={1} />
               </Form.Item>

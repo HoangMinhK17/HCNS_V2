@@ -258,9 +258,9 @@ const initCronJobs = () => {
     async () => {
       console.log("[Cron/HRM] Bắt đầu tự động đồng bộ từ HRM API...");
       try {
-        const results = await runHRMSync();
+        const results = await runHRMSync("cron");
         console.log(
-          `[Cron/HRM] ✅ Hoàn tất: ${results.inserted} thêm mới, ${results.updated} cập nhật, ${results.skipped} bỏ qua`
+          `[Cron/HRM] ✅ Hoàn tất: NV: ${results.employees?.total} (mới ${results.employees?.inserted}, sửa ${results.employees?.updated}, xóa ${results.employees?.removed}) | PB: ${results.departments?.total} | CD: ${results.positions?.total}`
         );
       } catch (err) {
         console.error("[Cron/HRM] ❌ Lỗi đồng bộ HRM:", err.message);

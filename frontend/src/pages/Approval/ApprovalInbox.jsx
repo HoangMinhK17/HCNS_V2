@@ -185,8 +185,8 @@ export default function ApprovalInbox() {
     : data.asset.map(i => ({ ...i, _type: 'asset' }));
 
   return (
-    <div style={{ padding: '24px 28px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
+    <div style={{ padding: 'clamp(16px,3vw,24px) clamp(12px,3vw,28px)', width: '100%', boxSizing: 'border-box' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <Title level={3} style={{ margin: 0 }}>
             <MailOutlined style={{ marginRight: 8, color: '#1677ff' }} />
@@ -201,14 +201,14 @@ export default function ApprovalInbox() {
       </div>
 
       {/* Summary */}
-      <Row gutter={14} style={{ marginBottom: 20 }}>
+      <Row gutter={[14, 14]} style={{ marginBottom: 20 }}>
         {[
           { label: 'Tổng chờ duyệt', value: data.totalPending, color: '#ef4444', bg: '#fef2f2' },
           { label: 'Nghỉ phép', value: data.leave?.length, color: '#3b82f6', bg: '#eff6ff' },
           { label: 'Làm thêm giờ', value: data.overtime?.length, color: '#8b5cf6', bg: '#f5f3ff' },
           { label: 'Tài sản', value: data.asset?.length, color: '#f59e0b', bg: '#fffbeb' },
         ].map((s, i) => (
-          <Col span={6} key={i}>
+          <Col xs={12} sm={6} key={i}>
             <Card bordered={false} className="stat-card-hover"
               style={{ borderRadius: 14, background: s.bg, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
               <Statistic title={<Text style={{ fontSize: 12, color: '#6b7280' }}>{s.label}</Text>}

@@ -152,8 +152,8 @@ export default function LeaveManagement() {
   ];
 
   return (
-    <div style={{ padding: '24px 28px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
+    <div style={{ padding: 'clamp(16px,3vw,24px) clamp(12px,3vw,28px)', width: '100%', boxSizing: 'border-box' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <Title level={3} style={{ margin: 0 }}>🌴 Nghỉ phép</Title>
           <Text type="secondary">Xin nghỉ phép và theo dõi trạng thái đơn</Text>
@@ -165,12 +165,12 @@ export default function LeaveManagement() {
 
       {/* Leave Balance Cards */}
       {balances.length > 0 && (
-        <Row gutter={14} style={{ marginBottom: 20 }}>
+        <Row gutter={[14, 14]} style={{ marginBottom: 20 }}>
           {balances.map(b => {
             const remaining = (b.allocated || 0) + (b.carryOver || 0) + (b.adjustment || 0) - (b.used || 0) - (b.pending || 0);
             const pct = b.allocated > 0 ? Math.round((b.used / b.allocated) * 100) : 0;
             return (
-              <Col span={6} key={b._id}>
+              <Col xs={24} sm={12} md={6} key={b._id}>
                 <Card bordered={false} style={{ borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                   <Text strong style={{ fontSize: 12, color: '#6b7280', display: 'block', marginBottom: 6 }}>
                     {b.leaveType?.name}

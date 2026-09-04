@@ -53,6 +53,35 @@ export default function App() {
   // Kiểm tra token trong localStorage để xác định trạng thái đăng nhập
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('accessToken'));
 
+  // Quản lý responsive & trạng thái thụt thò thanh menu
+  const [windowWidth, setWindowWidth] = useState(
+    typeof window !== 'undefined' ? window.innerWidth : 1200
+  );
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const w = window.innerWidth;
+      setWindowWidth(w);
+      if (w >= 992) {
+        setMobileOpen(false);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const isMobile = windowWidth < 992;
+
+  const handleToggleSidebar = () => {
+    if (isMobile) {
+      setMobileOpen((prev) => !prev);
+    } else {
+      setCollapsed((prev) => !prev);
+    }
+  };
+
   useEffect(() => {
     const handlePopState = (e) => {
       setCurrentPath(getCurrentPath());
@@ -65,6 +94,7 @@ export default function App() {
   const navigate = (path, employee = null) => {
     setCurrentPath(path);
     setSelectedEmployee(path.endsWith('renewal') ? employee : null);
+    if (isMobile) setMobileOpen(false); // Đóng menu mobile khi điều hướng
     window.scrollTo({ top: 0, behavior: 'smooth' });
     if (window.location.pathname !== `/${path}`) {
       window.history.pushState({ employee }, '', `/${path}`);
@@ -106,13 +136,30 @@ export default function App() {
         <Login onLoginSuccess={handleLoginSuccess} />
       ) : (
         <>
-          <Navbar onLogout={handleLogout} />
-          <Sidebar activePage={sidebarKey} onNavigate={navigate} />
+          <Navbar
+            onLogout={handleLogout}
+            onToggleSidebar={handleToggleSidebar}
+            isMobile={isMobile}
+            sidebarOpen={isMobile ? mobileOpen : !collapsed}
+            onNavigate={navigate}
+          />
+          <Sidebar
+            activePage={sidebarKey}
+            onNavigate={navigate}
+            isMobile={isMobile}
+            mobileOpen={mobileOpen}
+            onCloseMobile={() => setMobileOpen(false)}
+            collapsed={collapsed}
+          />
           <main style={{
-            marginLeft: 220,
+            marginLeft: isMobile ? 0 : (collapsed ? 72 : 220),
             marginTop: 60,
             minHeight: 'calc(100vh - 60px)',
             background: '#f5f6fa',
+            overflowX: 'hidden',
+            width: isMobile ? '100%' : `calc(100% - ${collapsed ? 72 : 220}px)`,
+            boxSizing: 'border-box',
+            transition: 'margin-left 0.22s cubic-bezier(0.2, 0, 0, 1), width 0.22s cubic-bezier(0.2, 0, 0, 1)',
           }}>
             {PageComponent}
           </main>

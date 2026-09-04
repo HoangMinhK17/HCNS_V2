@@ -85,9 +85,9 @@ export default function CompanyProfile() {
   }
 
   return (
-    <div style={{ padding: 24, background: '#f5f5f5', minHeight: '100vh' }}>
+    <div style={{ padding: 'clamp(16px,2vw,24px)', background: '#f5f5f5', minHeight: '100vh' }}>
       <Card
-        style={{ borderRadius: 12, boxShadow: '0 4px 20px rgba(0,0,0,0.05)', maxWidth: 900, margin: '0 auto' }}
+        style={{ borderRadius: 12, boxShadow: '0 4px 20px rgba(0,0,0,0.05)', maxWidth: '100%', width: '100%' }}
         title={
           <Space>
             <BankOutlined style={{ fontSize: 24, color: '#1677ff' }} />
@@ -173,13 +173,13 @@ export default function CompanyProfile() {
         destroyOnClose
       >
         <Form form={form} layout="vertical" onFinish={handleSave} style={{ marginTop: 16 }}>
-          <Row gutter={16}>
-            <Col span={12}>
+          <Row gutter={[16, 0]}>
+            <Col xs={24} sm={12}>
               <Form.Item name="code" label="Mã công ty" rules={[{ required: true, message: 'Bắt buộc nhập!' }]}>
                 <Input placeholder="Vd: CTY-01" />
               </Form.Item>
             </Col>
-            <Col span={12}>
+            <Col xs={24} sm={12}>
               <Form.Item name="taxCode" label="Mã số thuế">
                 <Input placeholder="Nhập MST" />
               </Form.Item>
@@ -189,12 +189,12 @@ export default function CompanyProfile() {
                 <Input placeholder="Nhập tên đầy đủ của công ty" />
               </Form.Item>
             </Col>
-            <Col span={12}>
+            <Col xs={24} sm={12}>
               <Form.Item name="shortName" label="Tên viết tắt">
                 <Input placeholder="Vd: FPT, VNG..." />
               </Form.Item>
             </Col>
-            <Col span={12}>
+            <Col xs={24} sm={12}>
               <Form.Item name="businessType" label="Loại hình doanh nghiệp">
                 <Select placeholder="Chọn loại hình">
                   {Object.entries(BUSINESS_TYPE_LABELS).map(([key, label]) => (
@@ -203,17 +203,17 @@ export default function CompanyProfile() {
                 </Select>
               </Form.Item>
             </Col>
-            <Col span={12}>
+            <Col xs={24} sm={12}>
               <Form.Item name="legalRepresentative" label="Người đại diện pháp luật">
                 <Input placeholder="Họ và tên người đại diện" />
               </Form.Item>
             </Col>
-            <Col span={12}>
+            <Col xs={24} sm={12}>
               <Form.Item name="foundedDate" label="Ngày thành lập">
                 <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" placeholder="Chọn ngày" />
               </Form.Item>
             </Col>
-            <Col span={12}>
+            <Col xs={24} sm={12}>
               <Form.Item name="phone" label="Số điện thoại">
                 <Input placeholder="Nhập số điện thoại" />
               </Form.Item>

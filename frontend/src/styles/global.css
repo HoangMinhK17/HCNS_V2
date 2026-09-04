@@ -175,3 +175,84 @@ body {
   font-weight: 700; font-size: 14px; color: #fff;
   flex-shrink: 0;
 }
+
+/* ════════════════════════════════════
+   GLOBAL RESPONSIVE LAYOUT
+   ════════════════════════════════════ */
+
+/* Ensure page content never overflows horizontally */
+.page-content {
+  padding: clamp(16px, 3vw, 28px) clamp(12px, 3vw, 32px);
+  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+/* Holiday event timeline: stack labels on mobile */
+@media (max-width: 768px) {
+  .page-content {
+    padding: 16px 14px;
+  }
+
+  /* Ensure ant Table horizontal scroll works in constrained container */
+  .ant-table-wrapper {
+    overflow-x: auto !important;
+  }
+
+  /* Toolbar flex stacking on mobile */
+  .holiday-toolbar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .holiday-toolbar > * {
+    width: 100% !important;
+  }
+}
+
+/* Small mobile */
+@media (max-width: 480px) {
+  .page-content {
+    padding: 12px 10px;
+  }
+
+  /* Timeline event cards: stack status badge below content */
+  .timeline-event-card {
+    flex-wrap: wrap !important;
+  }
+
+  .timeline-event-status {
+    width: 100%;
+    text-align: left !important;
+    margin-top: 8px;
+  }
+}
+
+/* Responsive Navbar & Sidebar transitions & helpers */
+#btn-toggle-sidebar:hover {
+  background: #e5e7eb !important;
+  border-color: #d1d5db !important;
+}
+
+@media (max-width: 768px) {
+  .navbar-search-wrapper {
+    display: none !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .navbar-user-text {
+    display: none !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .navbar-logout-text {
+    display: none !important;
+  }
+  .navbar-help-btn {
+    display: none !important;
+  }
+}
+

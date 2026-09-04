@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { sendContractWarningMail } from '../../utils/contractApi';
 import { getExpiringContracts } from '../../utils/employeeApi';
+import '../../styles/ContractsList.css';
 import {
   Table, Button, Input, Select, Space, Tag, Avatar,
   Typography, Tooltip, message, Badge, Spin, Alert,
 } from 'antd';
 import {
-  SearchOutlined, FilterOutlined, DownloadOutlined,
+  SearchOutlined, DownloadOutlined,
   SendOutlined, WarningFilled, CheckCircleFilled,
   ClockCircleOutlined, MailOutlined, ReloadOutlined,
 } from '@ant-design/icons';
@@ -245,50 +246,38 @@ export default function ContractsList({ onNavigate }) {
   ];
 
   return (
-    <div style={{ padding: '28px 32px', maxWidth: 1160 }}>
+    <div className="contracts-page-wrapper">
       {contextHolder}
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
-        <div>
+      <div className="contracts-header">
+        <div className="contracts-header__left">
           <Title level={3} style={{ margin: 0, fontWeight: 700 }}>
             Danh sách Thông báo & Hết hạn
           </Title>
 
           {/* Thống kê nhanh */}
           {!loading && !error && (
-            <div style={{ display: 'flex', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
+            <div className="contracts-stats">
               {criticalCount > 0 && (
-                <span style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 6,
-                  background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8,
-                  padding: '4px 12px', fontSize: 12.5, color: '#dc2626', fontWeight: 600,
-                }}>
+                <span className="stat-badge critical">
                   <WarningFilled /> {criticalCount} khẩn cấp (≤7 ngày)
                 </span>
               )}
               {warningCount > 0 && (
-                <span style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 6,
-                  background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8,
-                  padding: '4px 12px', fontSize: 12.5, color: '#d97706', fontWeight: 600,
-                }}>
+                <span className="stat-badge warning">
                   <ClockCircleOutlined /> {warningCount} cảnh báo (≤30 ngày)
                 </span>
               )}
-              <span style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                background: '#eff6ff', border: '1px solid #dbeafe', borderRadius: 8,
-                padding: '4px 12px', fontSize: 12.5, color: '#1677ff', fontWeight: 500,
-              }}>
+              <span className="stat-badge info">
                 <span className="cron-pulse" />
-                🔄 Cron job quét mỗi ngày lúc 08:00 — Gửi mail ở mốc 30/14/7/3/1 ngày
+                <span className="cron-text">🔄 Cron job quét mỗi ngày lúc 08:00 — Gửi mail ở mốc 30/14/7/3/1 ngày</span>
               </span>
             </div>
           )}
         </div>
 
-        <Space>
+        <div className="contracts-header__actions">
           <Button
             icon={<ReloadOutlined />}
             id="contracts-refresh"
@@ -310,15 +299,15 @@ export default function ContractsList({ onNavigate }) {
           >
             Gửi nhắc nhở hàng loạt
           </Button>
-        </Space>
+        </div>
       </div>
 
       {/* Toolbar */}
-      <Space style={{ marginBottom: 16, flexWrap: 'wrap' }} size={10}>
+      <div className="contracts-toolbar">
         <Input
           prefix={<SearchOutlined style={{ color: '#9ca3af' }} />}
           placeholder="Tìm tên, mã NV..."
-          style={{ width: 260, borderRadius: 8 }}
+          style={{ borderRadius: 8, minWidth: 200, flex: '1 1 200px', maxWidth: 300 }}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           id="contracts-search"
@@ -328,7 +317,7 @@ export default function ContractsList({ onNavigate }) {
           value={deptFilter}
           onChange={setDeptFilter}
           allowClear={true}
-          style={{ width: 200 }}
+          style={{ flex: '1 1 160px', minWidth: 140 }}
           id="contracts-dept-filter"
           options={departments.map((d) => ({
             value: d,
@@ -339,7 +328,7 @@ export default function ContractsList({ onNavigate }) {
         <Select
           value={urgencyFilter}
           onChange={setUrgencyFilter}
-          style={{ width: 190 }}
+          style={{ flex: '1 1 150px', minWidth: 140 }}
           allowClear={true}
           id="contracts-urgency-filter"
           options={[
@@ -352,7 +341,7 @@ export default function ContractsList({ onNavigate }) {
         <Select
           value={daysRange}
           onChange={setDaysRange}
-          style={{ width: 170 }}
+          style={{ flex: '1 1 150px', minWidth: 140 }}
           id="contracts-days-range"
           allowClear={true}
           options={[
@@ -363,7 +352,7 @@ export default function ContractsList({ onNavigate }) {
             { value: 90, label: 'Trong 90 ngày tới' },
           ]}
         />
-      </Space>
+      </div>
 
       {/* Error */}
       {error && (

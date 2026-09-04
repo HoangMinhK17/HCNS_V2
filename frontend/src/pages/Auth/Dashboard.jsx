@@ -362,11 +362,11 @@ export default function Dashboard({ onNavigate }) {
         .db-scroll::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 4px; }
       `}</style>
 
-      <div style={{ padding: '28px 32px', maxWidth: 1160 }}>
+      <div style={{ padding: 'clamp(16px,3vw,28px) clamp(12px,3vw,32px)', width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
 
         {/* ── Page header ─────────────────────────────── */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
-          <div>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <Title level={3} style={{ margin: 0, fontWeight: 800, color: '#1f2937', letterSpacing: -0.5 }}>
               <DashboardOutlined style={{ marginRight: 10, color: '#1677ff' }} />
               Tổng quan Nhân sự
@@ -418,7 +418,7 @@ export default function Dashboard({ onNavigate }) {
 
         {/* ── Stat summary row — 4 card đều chiều dọc ────── */}
         <Row gutter={[16, 16]} style={{ marginBottom: 24 }} align="stretch">
-          <Col span={6}>
+          <Col xs={24} sm={12} lg={6}>
             <StatBanner
               icon={<GiftFilled />}
               value={bdToday.length}
@@ -432,7 +432,7 @@ export default function Dashboard({ onNavigate }) {
               onClick={() => onNavigate('birthdays')}
             />
           </Col>
-          <Col span={6}>
+          <Col xs={24} sm={12} lg={6}>
             <StatBanner
               icon={<GiftOutlined />}
               value={birthdays.length}
@@ -444,7 +444,7 @@ export default function Dashboard({ onNavigate }) {
               onClick={() => onNavigate('birthdays')}
             />
           </Col>
-          <Col span={6}>
+          <Col xs={24} sm={12} lg={6}>
             <StatBanner
               icon={<WarningFilled />}
               value={ctCritical.length}
@@ -456,7 +456,7 @@ export default function Dashboard({ onNavigate }) {
               onClick={() => onNavigate('contracts')}
             />
           </Col>
-          <Col span={6}>
+          <Col xs={24} sm={12} lg={6}>
             <StatBanner
               icon={<FileTextOutlined />}
               value={contracts.length}

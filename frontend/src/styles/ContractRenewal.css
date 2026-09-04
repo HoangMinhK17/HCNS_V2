@@ -380,3 +380,73 @@
 .back-link:hover {
   color: var(--primary);
 }
+
+/* ════════════════════════════════════
+   RESPONSIVE BREAKPOINTS
+   ════════════════════════════════════ */
+
+/* Tablet: ≤ 1024px */
+@media (max-width: 1024px) {
+  .renewal-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .renewal-header-card {
+    flex-wrap: wrap;
+  }
+
+  .renewal-emp-meta {
+    gap: 10px;
+  }
+}
+
+/* Mobile: ≤ 768px */
+@media (max-width: 768px) {
+  .old-contract-card,
+  .new-contract-card {
+    padding: 16px;
+  }
+
+  .renewal-header-card {
+    padding: 14px 16px;
+  }
+
+  .info-field-row,
+  .form-field-row {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .step-label {
+    display: none;
+  }
+
+  .renewal-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .renewal-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Small mobile: ≤ 480px */
+@media (max-width: 480px) {
+  .renewal-emp-name {
+    font-size: 15px;
+  }
+
+  .renewal-emp-avatar,
+  .renewal-emp-avatar-placeholder {
+    width: 42px;
+    height: 42px;
+    font-size: 15px;
+  }
+
+  .step-connector {
+    min-width: 16px;
+    margin: 0 4px;
+  }
+}

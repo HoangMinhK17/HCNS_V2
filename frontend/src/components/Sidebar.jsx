@@ -21,7 +21,7 @@ import {
   FieldTimeOutlined,
   RobotOutlined,
 } from '@ant-design/icons';
-import { Menu, Avatar, Typography, Tag } from 'antd';
+import { Menu, Avatar, Typography, Tag, Drawer, Tooltip } from 'antd';
 
 const { Text } = Typography;
 
@@ -269,7 +269,14 @@ function filterMenuByRole(items, userRole) {
   });
 }
 
-export default function Sidebar({ activePage, onNavigate }) {
+export default function Sidebar({
+  activePage,
+  onNavigate,
+  isMobile = false,
+  mobileOpen = false,
+  onCloseMobile,
+  collapsed = false,
+}) {
   const user = (() => {
     try { return JSON.parse(localStorage.getItem('user')); } catch { return null; }
   })();
@@ -290,70 +297,196 @@ export default function Sidebar({ activePage, onNavigate }) {
     return name.charAt(0).toUpperCase() || 'U';
   };
 
+  const userAvatarBg = roleDisplay.color === 'red' ? '#ff4d4f'
+    : roleDisplay.color === 'blue' ? '#1677ff'
+      : roleDisplay.color === 'purple' ? '#7c3aed'
+        : roleDisplay.color === 'green' ? '#16a34a'
+          : '#6b7280';
+
+  // TRƯỜNG HỢP 1: MÀN HÌNH RESPONSIVE (MOBILE / TABLET)
+  // Hiển thị dạng Ant Design Drawer thụt thò trượt ra từ bên trái khi bấm 3 dấu gạch
+  if (isMobile) {
+    return (
+      <Drawer
+        placement="left"
+        open={mobileOpen}
+        onClose={onCloseMobile}
+        width={275}
+        styles={{
+          body: {
+            padding: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            height: '100%',
+            overflow: 'hidden',
+          },
+          header: {
+            padding: '12px 16px',
+            borderBottom: '1px solid #f0f2f5',
+          },
+        }}
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{
+              width: 30, height: 30, background: '#1677ff', borderRadius: 7,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: '#fff', fontWeight: 700, fontSize: 14,
+            }}>H</div>
+            <Text strong style={{ fontSize: 15, color: '#1677ff' }}>HRM Portal</Text>
+          </div>
+        }
+      >
+        {/* User Card */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          padding: '14px 16px 12px',
+          background: '#fafbfc',
+          borderBottom: '1px solid #f0f2f5',
+        }}>
+          <Avatar
+            style={{
+              background: userAvatarBg,
+              fontWeight: 700,
+              flexShrink: 0,
+            }}
+            size={36}
+          >
+            {getAvatarInitial()}
+          </Avatar>
+          <div style={{ overflow: 'hidden', flex: 1 }}>
+            <Text
+              strong
+              ellipsis
+              style={{ fontSize: 13, display: 'block', color: '#1f2937', marginBottom: 2 }}
+            >
+              {user?.fullName || user?.username || 'Người dùng'}
+            </Text>
+            <Tag
+              color={roleDisplay.color}
+              style={{ fontSize: 10, lineHeight: '16px', padding: '0 6px', margin: 0 }}
+            >
+              {roleDisplay.label}
+            </Tag>
+          </div>
+        </div>
+
+        {/* Menu list với thanh cuộn mượt */}
+        <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+          <Menu
+            mode="inline"
+            selectedKeys={[resolveKey(activePage)]}
+            onClick={({ key }) => {
+              onNavigate(key);
+              onCloseMobile?.(); // Tự động đóng Drawer sau khi chọn để nhường chỗ xem thông tin
+            }}
+            items={filteredMenuItems}
+            style={{ border: 'none', fontSize: 13 }}
+          />
+        </div>
+
+        {/* Footer info */}
+        <div style={{
+          padding: '12px 16px',
+          borderTop: '1px solid #f0f2f5',
+          fontSize: 11, color: '#9ca3af', textAlign: 'center',
+          background: '#fff',
+        }}>
+          FMS HRM v2.0 · Mobile Nav
+        </div>
+      </Drawer>
+    );
+  }
+
+  // TRƯỜNG HỢP 2: MÀN HÌNH DESKTOP
+  // Cho phép thu gọn (collapsed = 72px) hoặc mở rộng (220px) mượt mà
   return (
     <div style={{
       position: 'fixed',
       top: 60, left: 0,
-      width: 220,
+      width: collapsed ? 72 : 220,
       height: 'calc(100vh - 60px)',
       background: '#fff',
       borderRight: '1px solid #e5e7eb',
       display: 'flex',
       flexDirection: 'column',
       zIndex: 90,
-      overflowY: 'auto',
+      transition: 'width 0.22s cubic-bezier(0.2, 0, 0, 1)',
+      overflowX: 'hidden',
     }}>
-      {/* User Info */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 10,
-        padding: '14px 16px 12px',
-        borderBottom: '1px solid #f3f4f6',
-      }}>
-        <Avatar
-          style={{
-            background: roleDisplay.color === 'red' ? '#ff4d4f'
-              : roleDisplay.color === 'blue' ? '#1677ff'
-                : roleDisplay.color === 'purple' ? '#7c3aed'
-                  : roleDisplay.color === 'green' ? '#16a34a'
-                    : '#6b7280',
-            fontWeight: 700,
-            flexShrink: 0,
-          }}
-          size={36}
-        >
-          {getAvatarInitial()}
-        </Avatar>
-        <div style={{ overflow: 'hidden', flex: 1 }}>
-          <Text
-            strong
-            ellipsis
-            style={{ fontSize: 13, display: 'block', color: '#1f2937', marginBottom: 2 }}
+      {/* User Info Header */}
+      {!collapsed ? (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          padding: '14px 16px 12px',
+          borderBottom: '1px solid #f3f4f6',
+          minWidth: 220,
+        }}>
+          <Avatar
+            style={{
+              background: userAvatarBg,
+              fontWeight: 700,
+              flexShrink: 0,
+            }}
+            size={36}
           >
-            {user?.fullName || user?.username || 'Người dùng'}
-          </Text>
-          <Tag
-            color={roleDisplay.color}
-            style={{ fontSize: 10, lineHeight: '16px', padding: '0 6px', margin: 0 }}
-          >
-            {roleDisplay.label}
-          </Tag>
+            {getAvatarInitial()}
+          </Avatar>
+          <div style={{ overflow: 'hidden', flex: 1 }}>
+            <Text
+              strong
+              ellipsis
+              style={{ fontSize: 13, display: 'block', color: '#1f2937', marginBottom: 2 }}
+            >
+              {user?.fullName || user?.username || 'Người dùng'}
+            </Text>
+            <Tag
+              color={roleDisplay.color}
+              style={{ fontSize: 10, lineHeight: '16px', padding: '0 6px', margin: 0 }}
+            >
+              {roleDisplay.label}
+            </Tag>
+          </div>
         </div>
+      ) : (
+        <div style={{
+          display: 'flex', justifyContent: 'center', alignItems: 'center',
+          padding: '14px 0 12px',
+          borderBottom: '1px solid #f3f4f6',
+        }}>
+          <Tooltip title={`${user?.fullName || user?.username || 'Người dùng'} (${roleDisplay.label})`} placement="right">
+            <Avatar
+              style={{
+                background: userAvatarBg,
+                fontWeight: 700,
+              }}
+              size={34}
+            >
+              {getAvatarInitial()}
+            </Avatar>
+          </Tooltip>
+        </div>
+      )}
+
+      {/* Menu List */}
+      <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+        <Menu
+          mode="inline"
+          inlineCollapsed={collapsed}
+          selectedKeys={[resolveKey(activePage)]}
+          onClick={({ key }) => onNavigate(key)}
+          items={filteredMenuItems}
+          style={{ border: 'none', fontSize: 13 }}
+        />
       </div>
 
-      <Menu
-        mode="inline"
-        selectedKeys={[resolveKey(activePage)]}
-        onClick={({ key }) => onNavigate(key)}
-        items={filteredMenuItems}
-        style={{ border: 'none', flex: 1, fontSize: 13 }}
-      />
-
+      {/* Footer */}
       <div style={{
-        padding: '12px 16px',
+        padding: '10px 12px',
         borderTop: '1px solid #f3f4f6',
         fontSize: 11, color: '#9ca3af', textAlign: 'center',
+        whiteSpace: 'nowrap', overflow: 'hidden',
       }}>
-        FMS HRM v2.0 · Phase 2
+        {!collapsed ? 'FMS HRM v2.0 · Phase 2' : 'v2.0'}
       </div>
     </div>
   );
