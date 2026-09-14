@@ -214,7 +214,7 @@ export default function UsersList() {
       title: 'Trạng thái',
       dataIndex: 'isActive',
       key: 'isActive',
-      render: active => <Badge status={active ? 'success' : 'error'} text={active ? 'Hoạt động' : 'Bị khóa'} />
+      render: active => active ? <Tag color='success'>Hoạt động</Tag> : <Tag color='error'>Bị khóa</Tag>
     },
     {
       title: 'Đăng nhập cuối',

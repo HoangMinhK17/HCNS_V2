@@ -82,9 +82,9 @@ export default function Navbar({ onSearch, onLogout, onToggleSidebar, isMobile, 
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             color: '#fff', fontWeight: 700, fontSize: 15,
             boxShadow: '0 2px 6px rgba(22, 119, 255, 0.3)',
-          }}>H</div>
+          }}>AI</div>
           <Text strong style={{ fontSize: 15, color: '#1677ff', letterSpacing: -0.2 }}>
-            HRM Portal
+            AI HCNS 5.0
           </Text>
         </div>
 

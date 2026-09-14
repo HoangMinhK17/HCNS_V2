@@ -72,12 +72,8 @@ export const create = async (req, res) => {
     if (checkEmp) {
       return res.status(400).json({ success: false, message: "Nhân viên đã có tài khoản" });
     }
-    const checkCompanyId = await Employee.findOne({ _id: employee, });
-    if (!checkCompanyId.company) {
-      return res.status(400).json({ success: false, message: "Nhân viên chưa được gán công ty" });
-    }
     const hashedPassword = await bcrypt.hash(password, 12);
-    const doc = await User.create({ ...req.body, password: hashedPassword, company: checkCompanyId.company });
+    const doc = await User.create({ ...req.body, password: hashedPassword });
     const result = doc.toObject();
     delete result.password;
     return res.status(201).json({ success: true, data: result });
