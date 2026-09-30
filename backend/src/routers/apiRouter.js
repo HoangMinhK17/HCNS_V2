@@ -21,6 +21,7 @@ import contractRouter from "./contractRouter.js";
 
 import birthdayRouter        from "./birthdayRouter.js";
 import holidayEventRouter   from "./holidayEventRouter.js";
+import invoiceRouter        from "./invoiceRouter.js";
 
 const router = express.Router();
 
@@ -38,6 +39,9 @@ router.use("/attendance",  attendanceRouter);
 router.use("/shifts",      shiftRouter);
 router.use("/ess",         essRouter);
 router.use("/settings",    settingsRouter);
+
+// Phase 3 – Invoices & MISA AMIS Integration
+router.use("/invoices",    invoiceRouter);
 
 // Legacy
 router.use("/scrape",    scrapeRouter);

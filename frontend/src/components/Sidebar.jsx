@@ -20,6 +20,7 @@ import {
   MailOutlined,
   FieldTimeOutlined,
   RobotOutlined,
+  FileProtectOutlined,
 } from '@ant-design/icons';
 import { Menu, Avatar, Typography, Tag, Drawer, Tooltip } from 'antd';
 
@@ -205,6 +206,21 @@ const MENU_CONFIG = [
       //   label: 'Cài đặt chấm công',
       //   roles: [ROLES.SUPER_ADMIN, ROLES.HR_ADMIN],
       // },
+    ],
+  },
+  { type: 'divider' },
+  {
+    key: 'grp-invoice',
+    type: 'group',
+    label: 'KẾ TOÁN & HÓA ĐƠN',
+    roles: [ROLES.SUPER_ADMIN, ROLES.HR_ADMIN, ROLES.MANAGER],
+    children: [
+      {
+        key: 'invoices',
+        icon: <FileProtectOutlined />,
+        label: 'HĐĐT & MISA AMIS',
+        roles: [ROLES.SUPER_ADMIN, ROLES.HR_ADMIN, ROLES.MANAGER],
+      },
     ],
   },
   {

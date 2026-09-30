@@ -24,6 +24,9 @@ import ShiftManagement    from './pages/Attendance/ShiftManagement';
 import ApprovalInbox      from './pages/Approval/ApprovalInbox';
 import AttendanceSettings from './pages/Attendance/AttendanceSettings';
 
+// Phase 3 – Invoices & MISA AMIS
+import InvoiceManagement  from './pages/Invoices/InvoiceManagement';
+
 const ROUTES = [
   {
     path: 'dashboard',
@@ -139,6 +142,11 @@ const ROUTES = [
     path: 'attendance-settings',
     sidebarKey: 'attendance-settings',
     component: ({ navigate }) => <AttendanceSettings onNavigate={navigate} />,
+  },
+  {
+    path: 'invoices',
+    sidebarKey: 'invoices',
+    component: ({ navigate }) => <InvoiceManagement onNavigate={navigate} />,
   },
 ];
 
