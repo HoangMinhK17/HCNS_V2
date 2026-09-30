@@ -4,8 +4,10 @@ import { assignShifts, getSchedule, getMySchedule } from "../controllers/shiftCo
 
 const router = express.Router();
 
-router.get("/schedule",    verifyToken, checkPermission("shift:view"), getSchedule);
-router.get("/my-schedule", verifyToken, getMySchedule);
-router.post("/assign",     verifyToken, checkPermission("shift:assign"), assignShifts);
+router.use(verifyToken);
+
+router.get("/schedule",    checkPermission("shift:view"), getSchedule);
+router.get("/my-schedule", getMySchedule);
+router.post("/assign",     checkPermission("shift:assign"), assignShifts);
 
 export default router;

@@ -658,7 +658,7 @@ export const syncFromHRM = async (req, res) => {
         triggeredBy: "manual",
         error: error.message,
       });
-    } catch (_) {}
+    } catch (_) { }
     return res.status(500).json({
       success: false,
       message: error.message,

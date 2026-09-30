@@ -28,31 +28,32 @@ import {
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
 
 const router = express.Router();
+router.use(verifyToken);
 
 // GPS Locations
-router.get("/locations",          verifyToken, checkPermission("location:manage"), getLocations);
-router.post("/locations",         verifyToken, checkPermission("location:manage"), createLocation);
-router.put("/locations/:id",      verifyToken, checkPermission("location:manage"), updateLocation);
-router.delete("/locations/:id",   verifyToken, checkPermission("location:manage"), deleteLocation);
+router.get("/locations",          checkPermission("location:manage"), getLocations);
+router.post("/locations",         checkPermission("location:manage"), createLocation);
+router.put("/locations/:id",      checkPermission("location:manage"), updateLocation);
+router.delete("/locations/:id",   checkPermission("location:manage"), deleteLocation);
 
 // Holiday Calendar
-router.get("/holidays",           verifyToken, getHolidays);
-router.post("/holidays",          verifyToken, checkPermission("holiday:manage"), createHoliday);
-router.put("/holidays/:id",       verifyToken, checkPermission("holiday:manage"), updateHoliday);
-router.delete("/holidays/:id",    verifyToken, checkPermission("holiday:manage"), deleteHoliday);
+router.get("/holidays",           getHolidays);
+router.post("/holidays",          checkPermission("holiday:manage"), createHoliday);
+router.put("/holidays/:id",       checkPermission("holiday:manage"), updateHoliday);
+router.delete("/holidays/:id",    checkPermission("holiday:manage"), deleteHoliday);
 
 // Approval Flows
-router.get("/approval-flows",     verifyToken, checkPermission("approval:manage"), getApprovalFlows);
-router.post("/approval-flows",    verifyToken, checkPermission("approval:manage"), createApprovalFlow);
-router.delete("/approval-flows/:id", verifyToken, checkPermission("approval:manage"), deleteApprovalFlow);
-router.put("/approval-flows/:id", verifyToken, checkPermission("approval:manage"), updateApprovalFlow);
+router.get("/approval-flows",     checkPermission("approval:manage"), getApprovalFlows);
+router.post("/approval-flows",    checkPermission("approval:manage"), createApprovalFlow);
+router.delete("/approval-flows/:id", checkPermission("approval:manage"), deleteApprovalFlow);
+router.put("/approval-flows/:id", checkPermission("approval:manage"), updateApprovalFlow);
 
 // ── Onboarding Settings ───────────────────────────────────────────────────────
-router.get("/onboarding",                    verifyToken, checkPermission("onboard:get"), getSettings);
-router.put("/onboarding",                    verifyToken, checkPermission("onboard:update"), updateSettings);
-router.post("/onboarding/upload",            verifyToken, checkPermission("onboard:upload"), upload.single("file"), uploadDocument);
-router.delete("/onboarding/documents/:docId",verifyToken, checkPermission("onboard:delete"), deleteDocument);
-router.get("/onboarding/employees",          verifyToken, checkPermission("onboard:get"), getOnboardingEmployees);
-router.post("/onboarding/send/:employeeId",  verifyToken, checkPermission("onboard:send"), sendOnboardingManual);
+router.get("/onboarding",                    checkPermission("onboard:get"), getSettings);
+router.put("/onboarding",                    checkPermission("onboard:update"), updateSettings);
+router.post("/onboarding/upload",            checkPermission("onboard:upload"), upload.single("file"), uploadDocument);
+router.delete("/onboarding/documents/:docId",checkPermission("onboard:delete"), deleteDocument);
+router.get("/onboarding/employees",          checkPermission("onboard:get"), getOnboardingEmployees);
+router.post("/onboarding/send/:employeeId",  checkPermission("onboard:send"), sendOnboardingManual);
 
 export default router;

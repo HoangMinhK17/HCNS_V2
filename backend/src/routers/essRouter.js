@@ -34,32 +34,33 @@ import {
 } from "../controllers/approvalController.js";
 
 const router = express.Router();
+router.use(verifyToken);
 
 // ── Leave ────────────────────────────────────────────────────────────────────
-router.get("/leave/types",              verifyToken, getLeaveTypes);
-router.post("/leave/types",             verifyToken, checkPermission("leavetype:manage"), createLeaveType);
-router.put("/leave/types/:id",          verifyToken, checkPermission("leavetype:manage"), updateLeaveType);
-router.get("/leave/balance",            verifyToken, getMyLeaveBalance);
-router.post("/leave/balance/init",      verifyToken, checkPermission("leavebalance:manage"), initLeaveBalance);
-router.post("/leave",                   verifyToken, checkPermission("ess:leave"), createLeaveRequest);
-router.get("/leave/my-requests",        verifyToken, (req, res, next) => { req.query.requestType = "leave"; next(); }, getMyRequests);
+router.get("/leave/types",              getLeaveTypes);
+router.post("/leave/types",             checkPermission("leavetype:manage"), createLeaveType);
+router.put("/leave/types/:id",          checkPermission("leavetype:manage"), updateLeaveType);
+router.get("/leave/balance",            getMyLeaveBalance);
+router.post("/leave/balance/init",      checkPermission("leavebalance:manage"), initLeaveBalance);
+router.post("/leave",                   checkPermission("ess:leave"), createLeaveRequest);
+router.get("/leave/my-requests",        (req, res, next) => { req.query.requestType = "leave"; next(); }, getMyRequests);
 
 // ── Overtime ─────────────────────────────────────────────────────────────────
-router.post("/overtime",                verifyToken, checkPermission("ess:overtime"), createOvertimeRequest);
-router.get("/overtime/my-requests",     verifyToken, getMyOvertimeRequests);
+router.post("/overtime",                checkPermission("ess:overtime"), createOvertimeRequest);
+router.get("/overtime/my-requests",     getMyOvertimeRequests);
 
 // ── Asset ─────────────────────────────────────────────────────────────────────
-router.post("/asset",                   verifyToken, checkPermission("ess:asset"), createAssetRequest);
-router.get("/asset/my-requests",        verifyToken, getMyAssetRequests);
-router.put("/asset/:id/fulfill",        verifyToken, checkPermission("approval:manage"), fulfillAssetRequest);
+router.post("/asset",                   checkPermission("ess:asset"), createAssetRequest);
+router.get("/asset/my-requests",        getMyAssetRequests);
+router.put("/asset/:id/fulfill",        checkPermission("approval:manage"), fulfillAssetRequest);
 
 // ── Approval actions (dùng chung cho cả 3 loại) ───────────────────────────────
-router.post("/:requestType/:requestId/submit",  verifyToken, submitRequest);
-router.post("/:requestType/:requestId/approve", verifyToken, checkPermission("approval:manage"), approveRequest);
-router.post("/:requestType/:requestId/cancel",  verifyToken, cancelRequest);
+router.post("/:requestType/:requestId/submit",  submitRequest);
+router.post("/:requestType/:requestId/approve", checkPermission("approval:manage"), approveRequest);
+router.post("/:requestType/:requestId/cancel",  cancelRequest);
 
 // ── Approval Inbox ────────────────────────────────────────────────────────────
-router.get("/approvals/pending",        verifyToken, checkPermission("approval:view"), getPendingApprovals);
-router.get("/approvals/my-requests",    verifyToken, getMyRequests);
+router.get("/approvals/pending",        checkPermission("approval:view"), getPendingApprovals);
+router.get("/approvals/my-requests",    getMyRequests);
 
 export default router;
