@@ -7,10 +7,18 @@
 
 import puppeteer from "puppeteer";
 import GdtInvoice from "../models/GdtInvoice.js";
+import Company from "../models/Company.js";
 import path from "path";
 import os from "os";
 import fs from "fs";
 import { randomUUID } from "crypto";
+import {
+  fetchInvoiceXml,
+  fetchInvoiceDetail,
+  generateInvoiceHtml,
+  renderPdfFromHtml,
+  streamInvoicesZip
+} from "../services/gdtInvoiceExportService.js";
 
 let _browser = null;
 let _page = null;
@@ -31,9 +39,39 @@ try {
   if (!fs.existsSync(PROFILE_DIR)) fs.mkdirSync(PROFILE_DIR, { recursive: true });
 } catch (_) {}
 
+const TOKEN_CACHE_FILE = path.join(PROFILE_DIR, "gdt_token_cache.json");
+
+export const saveTokenToDisk = (token) => {
+  try {
+    if (token) {
+      fs.writeFileSync(TOKEN_CACHE_FILE, JSON.stringify({ token, savedAt: Date.now() }), "utf-8");
+    }
+  } catch (_) {}
+};
+
+export const loadTokenFromDisk = () => {
+  try {
+    if (fs.existsSync(TOKEN_CACHE_FILE)) {
+      const data = JSON.parse(fs.readFileSync(TOKEN_CACHE_FILE, "utf-8"));
+      if (data?.token && (Date.now() - (data.savedAt || 0) < 12 * 3600 * 1000)) {
+        return data.token;
+      }
+    }
+  } catch (_) {}
+  return "";
+};
+
+_gdtToken = loadTokenFromDisk();
+if (_gdtToken) {
+  _isLoggedIn = true;
+  _sessionStatus = "logged_in";
+  console.log("[GDT] Đã khôi phục token phiên TCT từ cache!");
+}
+
 const closeBrowserInternal = async () => {
   try { if (_browser) await _browser.close(); } catch (_) {}
   _browser = null; _page = null; _isLoggedIn = false; _gdtToken = ""; _sessionStatus = "idle";
+  try { if (fs.existsSync(TOKEN_CACHE_FILE)) fs.unlinkSync(TOKEN_CACHE_FILE); } catch (_) {}
 };
 
 const extractGdtToken = async () => {
@@ -252,6 +290,7 @@ export const startGdtSession = async (req, res) => {
         if (auth && auth.includes("eyJ")) {
           _gdtToken = auth.startsWith("Bearer ") ? auth : "Bearer " + auth;
           _isLoggedIn = true; _sessionStatus = "logged_in"; SESSION.lastLoginTime = new Date();
+          saveTokenToDisk(_gdtToken);
           console.log("[GDT] JWT from request!");
         }
       } catch (_) {}
@@ -266,6 +305,7 @@ export const startGdtSession = async (req, res) => {
           const m = text.match(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/);
           if (m && !_gdtToken) {
             _gdtToken = "Bearer " + m[0]; _isLoggedIn = true; _sessionStatus = "logged_in"; SESSION.lastLoginTime = new Date();
+            saveTokenToDisk(_gdtToken);
             console.log("[GDT] JWT from response!");
           }
         }
@@ -574,9 +614,13 @@ export const submitGdtLogin = async (req, res) => {
       console.log("[GDT Auto-Scrape] " + list.length + " invoices...");
       const result = await saveInvoices(list);
       SESSION.invoiceCount = result.saved.length;
+
+      // Kích hoạt tiến trình tải nền toàn bộ file XML về lưu MongoDB
+      autoFetchXmls(result.saved, _gdtToken);
+
       return res.status(200).json({
         success: true,
-        message: `Đăng nhập thành công! Đã kéo ${result.totalFetched} HĐ (Thêm mới: ${result.insertedCount}, Đã có sẵn: ${result.skippedCount}).`,
+        message: `Đăng nhập thành công! Đã kéo ${result.totalFetched} HĐ (Thêm mới: ${result.insertedCount}, Đã có sẵn: ${result.skippedCount}). Đang tự động lưu XML vào CSDL...`,
         sessionStatus: "logged_in",
         isLoggedIn: true,
         autoScrape: {
@@ -604,6 +648,81 @@ export const getGdtSessionStatus = async (req, res) => {
   return res.status(200).json({ success: true, isLoggedIn: _isLoggedIn, sessionStatus: _sessionStatus, hasBrowser: !!_browser && !_browser.disconnected, hasToken: !!_gdtToken, lastLoginTime: SESSION.lastLoginTime, invoiceCount: SESSION.invoiceCount, lastError: SESSION.lastError });
 };
 
+/**
+ * Lấy trang Puppeteer hợp lệ đang hoạt động để chạy query bypass WAF
+ */
+export const getActiveGdtPage = async () => {
+  if (_browser && !_browser.disconnected) {
+    if (_page && !_page.isClosed()) {
+      return _page;
+    }
+    const pages = await _browser.pages();
+    if (pages.length > 0) {
+      _page = pages[0];
+      return _page;
+    }
+  }
+
+  // Nếu browser chưa mở nhưng có token hoặc profile cache, tự khởi động headless browser
+  try {
+    const token = _gdtToken || loadTokenFromDisk();
+    if (token) {
+      const chromePaths = [
+        "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+        "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+        "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+      ];
+      const executablePath = chromePaths.find(p => fs.existsSync(p));
+      console.log("[GDT] 🔄 Tự động mở browser nền để phục vụ tải XML/PDF/ZIP...");
+      _browser = await puppeteer.launch({
+        headless: true,
+        executablePath: executablePath || undefined,
+        userDataDir: PROFILE_DIR,
+        args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-blink-features=AutomationControlled"]
+      });
+      const pages = await _browser.pages();
+      _page = pages.length > 0 ? pages[0] : await _browser.newPage();
+      await _page.evaluateOnNewDocument(() => {
+        Object.defineProperty(navigator, "webdriver", { get: () => undefined });
+        window.chrome = { runtime: {} };
+      });
+      await _page.goto("https://hoadondientu.gdt.gov.vn/", { waitUntil: "domcontentloaded", timeout: 30000 }).catch(() => {});
+      return _page;
+    }
+  } catch (err) {
+    console.warn("[GDT] Không thể tự mở browser nền:", err.message);
+  }
+
+  return null;
+};
+
+// Tự động tải XML nền cho danh sách hóa đơn
+const autoFetchXmls = (invoices, token, page = null) => {
+  if (!Array.isArray(invoices) || invoices.length === 0) return;
+  setTimeout(async () => {
+    console.log(`[GDT Auto-XML] 🚀 Bắt đầu tự động tải XML cho ${invoices.length} hóa đơn...`);
+    let downloaded = 0;
+    const activePage = page || await getActiveGdtPage();
+    for (const inv of invoices) {
+      try {
+        if (!inv.xml_raw_data || !inv.xml_raw_data.trim().startsWith("<")) {
+          const doc = await GdtInvoice.findById(inv._id);
+          if (doc && (!doc.xml_raw_data || !doc.xml_raw_data.trim().startsWith("<"))) {
+            const xml = await fetchInvoiceXml(doc, token, activePage);
+            if (xml && xml.trim().startsWith("<")) {
+              downloaded++;
+            }
+            await new Promise(r => setTimeout(r, 400));
+          }
+        }
+      } catch (err) {
+        console.warn(`[GDT Auto-XML] Lỗi tải XML HĐ ${inv.shdon}:`, err.message);
+      }
+    }
+    console.log(`[GDT Auto-XML] ✅ Hoàn tất! Đã lưu ${downloaded} file XML vào MongoDB.`);
+  }, 500);
+};
+
 export const scrapeGdtInvoices = async (req, res) => {
   const { startDate = "01/09/2026", endDate = "30/09/2026", size = 100 } = req.query;
   if (!_browser || !_page || _page.isClosed() || !_isLoggedIn) return res.status(401).json({ success: false, message: "Chua dang nhap TCT. Bam 'Khoi dong phien TCT' va nhap Captcha truoc." });
@@ -616,6 +735,10 @@ export const scrapeGdtInvoices = async (req, res) => {
     const list = invoiceData?.datas || invoiceData?.content || (Array.isArray(invoiceData) ? invoiceData : []);
     const result = await saveInvoices(list);
     SESSION.invoiceCount = result.saved.length;
+
+    // Tự động tải XML nền qua chính tab browser vừa cào dữ liệu
+    autoFetchXmls(result.saved, _gdtToken, _page);
+
     return res.status(200).json({
       success: true,
       message: `Đã kéo ${result.totalFetched} HĐ từ TCT: Thêm mới ${result.insertedCount}, Đã có sẵn (bỏ qua): ${result.skippedCount}`,
@@ -635,34 +758,122 @@ export const scrapeGdtInvoices = async (req, res) => {
 
 export const scrapeGdtInvoiceXml = async (req, res) => {
   const { id } = req.params;
-  if (!_isLoggedIn || !_gdtToken) return res.status(401).json({ success: false, message: "Chưa đăng nhập TCT. Vui lòng khởi động phiên và nhập Captcha trước." });
+  const token = _gdtToken || loadTokenFromDisk();
+  const activePage = await getActiveGdtPage();
+
+  if (!_isLoggedIn && !token && !activePage) {
+    return res.status(401).json({ success: false, message: "Chưa đăng nhập TCT. Vui lòng khởi động phiên và nhập Captcha trước." });
+  }
   try {
     const invoice = await GdtInvoice.findById(id);
     if (!invoice) return res.status(404).json({ success: false, message: "Không tìm thấy hóa đơn" });
 
-    const xmlUrl = "https://hoadondientu.gdt.gov.vn/api/query/invoices/export-xml?nbmst="
-      + encodeURIComponent(invoice.nbmst)
-      + "&khhdon=" + encodeURIComponent(invoice.khhdon)
-      + "&shdon=" + encodeURIComponent(invoice.shdon);
-    console.log("[GDT XML] Node.js fetch:", xmlUrl.slice(0, 120));
+    const xml = await fetchInvoiceXml(invoice, token, activePage);
+    if (!xml || !xml.trim().startsWith("<")) {
+      return res.status(400).json({ success: false, message: "Không tải được XML từ TCT. Vui lòng kiểm tra lại phiên đăng nhập." });
+    }
 
-    // Gọi thẳng từ Node.js với đầy đủ headers WAF yêu cầu
-    const xmlHeaders = {
-      ...buildGdtHeaders(_gdtToken),
-      "Action": "Xem chi tiết hóa đơn",
-      "End-Point": "/tra-cuu/tra-cuu-hoa-don",
-    };
-    const resp = await fetch(xmlUrl, { method: "GET", headers: xmlHeaders });
-    const body = await resp.text();
-
-    console.log("[GDT XML] status:", resp.status, "| size:", body?.length);
-    if (!body || body.length < 10)
-      return res.status(400).json({ success: false, message: `Không tải được XML từ TCT (HTTP ${resp.status})` });
-
-    invoice.xml_raw_data = body;
-    await invoice.save();
     return res.status(200).json({ success: true, message: "Đã lưu XML gốc!", invoice });
   } catch (error) { return res.status(500).json({ success: false, message: error.message }); }
+};
+
+/**
+ * Tải file XML của 1 hóa đơn về máy
+ */
+export const downloadInvoiceXmlFile = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const invoice = await GdtInvoice.findById(id);
+    if (!invoice) return res.status(404).json({ success: false, message: "Không tìm thấy hóa đơn" });
+
+    let xml = invoice.xml_raw_data;
+    const token = _gdtToken || loadTokenFromDisk();
+    const activePage = await getActiveGdtPage();
+
+    if ((!xml || !xml.trim().startsWith("<")) && (token || activePage)) {
+      xml = await fetchInvoiceXml(invoice, token, activePage);
+    }
+
+    if (!xml || !xml.trim().startsWith("<")) {
+      return res.status(400).json({
+        success: false,
+        message: "Chưa có dữ liệu XML của hóa đơn này. Vui lòng bấm 'Khởi động phiên TCT' để đăng nhập và tải XML từ Tổng Cục Thuế."
+      });
+    }
+
+    const safeShdon = String(invoice.shdon || "").padStart(7, "0");
+    const safeKhhdon = invoice.khhdon || "HD";
+    const filename = `HD_${safeShdon}_${safeKhhdon}.xml`;
+
+    res.setHeader("Content-Type", "application/xml; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    return res.status(200).send(xml);
+  } catch (error) {
+    console.error("[Download XML Error]:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * Xuất và tải file PDF bản thể hiện của 1 hóa đơn
+ */
+export const downloadInvoicePdfFile = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const invoice = await GdtInvoice.findById(id);
+    if (!invoice) return res.status(404).json({ success: false, message: "Không tìm thấy hóa đơn" });
+
+    const token = _gdtToken || loadTokenFromDisk();
+    const activePage = await getActiveGdtPage();
+
+    let detail = null;
+    if (token || activePage) {
+      detail = await fetchInvoiceDetail(invoice, token, activePage);
+    }
+
+    const company = await Company.findOne({ deletedAt: null }).lean();
+    const html = generateInvoiceHtml(invoice, detail, company);
+    const pdfBuffer = await renderPdfFromHtml(html, _browser);
+
+    const safeShdon = String(invoice.shdon || "").padStart(7, "0");
+    const safeKhhdon = invoice.khhdon || "HD";
+    const filename = `HD_${safeShdon}_${safeKhhdon}.pdf`;
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
+    return res.status(200).send(pdfBuffer);
+  } catch (error) {
+    console.error("[Download PDF Error]:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * Tải toàn bộ hoặc các hóa đơn đã chọn thành 1 file ZIP (gồm cả XML và PDF)
+ */
+export const downloadInvoicesZipFile = async (req, res) => {
+  try {
+    const { ids } = req.body || {};
+    let query = {};
+    if (Array.isArray(ids) && ids.length > 0) {
+      query = { _id: { $in: ids } };
+    }
+    const invoices = await GdtInvoice.find(query).sort({ tdlap: -1 });
+    if (!invoices || invoices.length === 0) {
+      return res.status(404).json({ success: false, message: "Không có hóa đơn nào để xuất file" });
+    }
+
+    const token = _gdtToken || loadTokenFromDisk();
+    const activePage = await getActiveGdtPage();
+
+    console.log(`[GDT ZIP] Đang xuất file ZIP cho ${invoices.length} hóa đơn...`);
+    await streamInvoicesZip(invoices, token, _browser, res, activePage);
+  } catch (error) {
+    console.error("[Download ZIP Error]:", error);
+    if (!res.headersSent) {
+      return res.status(500).json({ success: false, message: error.message });
+    }
+  }
 };
 
 export const closeGdtSession = async (req, res) => {

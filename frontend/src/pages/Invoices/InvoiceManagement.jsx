@@ -36,7 +36,12 @@ import {
   FileProtectOutlined,
   LoginOutlined,
   GlobalOutlined,
-  DeleteOutlined
+  DeleteOutlined,
+  FilePdfOutlined,
+  FileZipOutlined,
+  DownloadOutlined,
+  EyeOutlined,
+  CodeOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
@@ -326,6 +331,78 @@ export default function InvoiceManagement() {
     }
   };
 
+  // ── XUẤT FILE PDF, XML, ZIP ──
+  const [downloadingZip, setDownloadingZip] = useState(false);
+
+  // Mở/Tải PDF bản thể hiện
+  const handleDownloadPdf = (invoice) => {
+    window.open(`${API_BASE}/invoices/${invoice._id}/pdf`, '_blank');
+  };
+
+  // Tải file XML gốc
+  const handleDownloadXmlFile = async (invoice) => {
+    try {
+      const res = await fetch(`${API_BASE}/invoices/${invoice._id}/xml`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        message.warning({
+          content: err.message || 'Chưa có file XML. Hãy khởi động phiên TCT và đăng nhập để tải XML từ Tổng Cục Thuế.',
+          duration: 5
+        });
+        return;
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const safeShdon = String(invoice.shdon || "").padStart(7, "0");
+      const safeKhhdon = invoice.khhdon || "HD";
+      a.download = `HD_${safeShdon}_${safeKhhdon}.xml`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      message.success(`Đã tải file XML hóa đơn ${invoice.shdon}!`);
+    } catch (e) {
+      message.error('Lỗi khi tải file XML: ' + e.message);
+    }
+  };
+
+  // Tải trọn bộ ZIP (gồm cả PDF và XML)
+  const handleDownloadZip = async (ids = null) => {
+    try {
+      setDownloadingZip(true);
+      message.loading({ content: 'Đang tạo file ZIP trọn bộ hóa đơn (PDF + XML)...', key: 'zip_dl', duration: 0 });
+      const targetIds = Array.isArray(ids) && ids.length > 0 ? ids : (selectedRowKeys.length > 0 ? selectedRowKeys : []);
+
+      const response = await fetch(`${API_BASE}/invoices/download-zip`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: targetIds })
+      });
+
+      if (!response.ok) {
+        const errJson = await response.json().catch(() => ({}));
+        throw new Error(errJson.message || `Lỗi tải file ZIP (HTTP ${response.status})`);
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `HoaDon_FumeeTech_${dayjs().format('YYYYMMDD')}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      message.success({ content: 'Đã tải xong file ZIP trọn bộ hóa đơn!', key: 'zip_dl', duration: 3 });
+    } catch (err) {
+      message.error({ content: 'Không thể tải ZIP: ' + err.message, key: 'zip_dl', duration: 4 });
+    } finally {
+      setDownloadingZip(false);
+    }
+  };
+
   // ── DIRECT API FLOW (cũ) — chỉ dùng khi có cookie thủ công ──
   const fetchCaptcha = async () => {
     try {
@@ -551,13 +628,13 @@ export default function InvoiceManagement() {
       title: 'Hành động',
       key: 'action',
       align: 'center',
-      width: 140,
+      width: 200,
       render: (_, r) => (
         <Space size={4}>
           <Tooltip title={r.xml_raw_data ? 'Xem chi tiết & XML' : 'Tải XML gốc từ TCT'}>
             <Button
               size="small"
-              icon={<FileTextOutlined />}
+              icon={<EyeOutlined />}
               onClick={() => {
                 if (r.xml_raw_data) {
                   setSelectedInvoice(r);
@@ -568,6 +645,28 @@ export default function InvoiceManagement() {
               }}
             >
               Xem
+            </Button>
+          </Tooltip>
+
+          <Tooltip title="Mở / Tải file PDF bản thể hiện">
+            <Button
+              size="small"
+              style={{ color: '#d4380d', borderColor: '#ffbb96' }}
+              icon={<FilePdfOutlined />}
+              onClick={() => handleDownloadPdf(r)}
+            >
+              PDF
+            </Button>
+          </Tooltip>
+
+          <Tooltip title="Tải file XML gốc">
+            <Button
+              size="small"
+              style={{ color: '#389e0d', borderColor: '#b7eb8f' }}
+              icon={<CodeOutlined />}
+              onClick={() => handleDownloadXmlFile(r)}
+            >
+              XML
             </Button>
           </Tooltip>
 
@@ -791,6 +890,21 @@ export default function InvoiceManagement() {
                   </Button>
                 </Popconfirm>
               )}
+              <Button
+                icon={<FileZipOutlined />}
+                loading={downloadingZip}
+                disabled={invoices.length === 0}
+                onClick={() => handleDownloadZip()}
+                style={{
+                  color: '#13c2c2',
+                  borderColor: '#87e8de',
+                  fontWeight: 500,
+                }}
+              >
+                {selectedRowKeys.length > 0
+                  ? `📦 Tải (${selectedRowKeys.length}) HĐ (ZIP)`
+                  : '📦 Tải Tất Cả (ZIP)'}
+              </Button>
               <Button
                 type="primary"
                 danger={false}

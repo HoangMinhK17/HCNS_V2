@@ -22,6 +22,9 @@ import {
   scrapeGdtInvoiceXml,
   getGdtSessionStatus,
   closeGdtSession,
+  downloadInvoiceXmlFile,
+  downloadInvoicePdfFile,
+  downloadInvoicesZipFile,
 } from "../controllers/gdtPuppeteerController.js";
 
 const router = express.Router();
@@ -30,8 +33,18 @@ const router = express.Router();
 router.get("/status", getSyncDashboardStatus);
 
 // Xóa hóa đơn trong CSDL
+router.delete("/:id", deleteInvoice);
 router.delete("/invoices/:id", deleteInvoice);
+router.post("/bulk-delete", bulkDeleteInvoices);
 router.post("/invoices/bulk-delete", bulkDeleteInvoices);
+
+// Tải file XML, PDF và ZIP (Trọn bộ hóa đơn)
+router.get("/:id/xml", downloadInvoiceXmlFile);
+router.get("/invoices/:id/xml", downloadInvoiceXmlFile);
+router.get("/:id/pdf", downloadInvoicePdfFile);
+router.get("/invoices/:id/pdf", downloadInvoicePdfFile);
+router.post("/download-zip", downloadInvoicesZipFile);
+router.post("/invoices/download-zip", downloadInvoicesZipFile);
 
 // ── LUỒNG 1A: Puppeteer Session (Đăng nhập Captcha trên Modal ERP — không bị 403) ──
 router.get("/gdt/puppet/status", getGdtSessionStatus);
