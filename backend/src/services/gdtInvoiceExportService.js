@@ -80,6 +80,22 @@ export function formatDate(d) {
 }
 
 /**
+ * Định dạng ngày giờ chuẩn YYYY-MM-DD HH:mm:ss cho chữ ký số
+ */
+export function formatDateTime(d) {
+  if (!d) return "";
+  const date = new Date(d);
+  if (isNaN(date.getTime())) return "";
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  const seconds = String(date.getSeconds()).padStart(2, "0");
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+}
+
+/**
  * Headers chuẩn WAF GDT
  */
 const buildGdtHeaders = (token, action = "Xem chi tiết (hóa đơn)") => ({
@@ -324,22 +340,96 @@ export async function fetchInvoiceDetail(invoice, token, page = null) {
 }
 
 /**
+ * Bóc tách dữ liệu có cấu trúc từ file XML gốc (Nghị định 123 / Thông tư 78)
+ */
+export function parseXmlInvoiceData(xmlStr) {
+  if (!xmlStr || typeof xmlStr !== "string" || !xmlStr.trim().startsWith("<")) {
+    return null;
+  }
+
+  const getTag = (xml, tag) => {
+    const m = xml.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, "i"));
+    return m ? m[1].trim() : "";
+  };
+
+  const getSection = (xml, tag) => {
+    const m = xml.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, "i"));
+    return m ? m[1] : "";
+  };
+
+  try {
+    const ttChung = getSection(xmlStr, "TTChung");
+    const nBan = getSection(xmlStr, "NBan");
+    const nMua = getSection(xmlStr, "NMua");
+    const dshhdvu = getSection(xmlStr, "DSHHDVu");
+    const tToan = getSection(xmlStr, "TToan");
+    const mccqt = getTag(xmlStr, "MCCQT");
+    const signingTime = getTag(xmlStr, "SigningTime");
+
+    // Bóc tách danh sách hàng hóa
+    const items = [];
+    const itemMatches = dshhdvu.match(/<HHDVu[\s\S]*?<\/HHDVu>/gi) || [];
+    for (const itXml of itemMatches) {
+      items.push({
+        thhdvu: getTag(itXml, "THHDVu") || getTag(itXml, "Ten") || "",
+        dvtinh: getTag(itXml, "DVTinh") || getTag(itXml, "DVT") || "",
+        sluong: Number(getTag(itXml, "SLuong")) || 0,
+        dgia: Number(getTag(itXml, "DGia")) || 0,
+        thtien: Number(getTag(itXml, "ThTien")) || 0,
+        tsuat: getTag(itXml, "TSuat") || "",
+      });
+    }
+
+    return {
+      khmshdon: getTag(ttChung, "KHMSHDon") || "1",
+      khhdon: getTag(ttChung, "KHHDon"),
+      shdon: getTag(ttChung, "SHDon"),
+      nlap: getTag(ttChung, "NLap"),
+      htttoan: getTag(ttChung, "HTTToan") || "TM/CK",
+      mccqt,
+      signingTime,
+      // Bên Bán
+      nbten: getTag(nBan, "Ten"),
+      nbmst: getTag(nBan, "MST"),
+      nbdchi: getTag(nBan, "DChi"),
+      nbsdthoai: getTag(nBan, "SDThoai"),
+      // Bên Mua
+      nmten: getTag(nMua, "Ten"),
+      nmmst: getTag(nMua, "MST"),
+      nmdchi: getTag(nMua, "DChi"),
+      // Tiền
+      tgtttbso: Number(getTag(tToan, "TgTCThue")) || Number(getTag(tToan, "ThTien")) || 0,
+      tgtthue: Number(getTag(tToan, "TgTThue")) || Number(getTag(tToan, "TThue")) || 0,
+      tgttoan: Number(getTag(tToan, "TgTTTBSo")) || Number(getTag(tToan, "TongTien")) || 0,
+      amountInWords: getTag(tToan, "TgTTTBChu"),
+      items,
+    };
+  } catch (err) {
+    console.warn("[XML Parse Error]:", err.message);
+    return null;
+  }
+}
+
+/**
  * Sinh HTML bản thể hiện Hóa đơn điện tử chuẩn Bộ Tài Chính (TT78)
  */
 export function generateInvoiceHtml(invoice, detailData = null, company = null) {
-  const d = detailData || {};
+  // ƯU TIÊN SỐ 1: Bóc tách trực tiếp từ chuỗi XML gốc lưu trong DB nếu có
+  const xmlParsed = invoice.xml_raw_data ? parseXmlInvoiceData(invoice.xml_raw_data) : null;
+  const d = xmlParsed || detailData || {};
+
   const sellerName = d.nbten || invoice.nbten || "";
   const sellerTax = d.nbmst || invoice.nbmst || "";
   const sellerAddress = d.nbdchi || invoice.nbdchi || "";
   const sellerTel = d.nbsdthoai || "";
 
-  // Thông tin Đơn vị Mua hàng: Ưu tiên dữ liệu hóa đơn gốc từ TCT -> sau đó đến Công ty trong CSDL
+  // Thông tin Đơn vị Mua hàng: Ưu tiên dữ liệu hóa đơn gốc từ XML/TCT -> sau đó đến Công ty trong CSDL
   const buyerName = d.nmten || company?.name || "CÔNG TY TNHH FUMEE TECH";
   const buyerTax = d.nmmst || company?.taxCode || "0109120256";
   const buyerAddress = d.nmdchi || company?.address || "Tầng 3, Số 23 Tô Vĩnh Diện, Phường Khương Trung, Quận Thanh Xuân, Thành phố Hà Nội, Việt Nam";
   const buyerPayment = d.htttoan || "TM/CK";
 
-  const issueDate = invoice.tdlap ? new Date(invoice.tdlap) : new Date();
+  const issueDate = d.nlap ? new Date(d.nlap) : (invoice.tdlap ? new Date(invoice.tdlap) : new Date());
   const day = String(issueDate.getDate()).padStart(2, "0");
   const month = String(issueDate.getMonth() + 1).padStart(2, "0");
   const year = issueDate.getFullYear();
@@ -347,7 +437,10 @@ export function generateInvoiceHtml(invoice, detailData = null, company = null) 
   const totalBeforeTax = Number(d.tgtttbso ?? invoice.tgtttbso ?? 0);
   const totalTax = Number(d.tgtthue ?? invoice.tgtthue ?? 0);
   const totalPayment = Number(d.tgttoan ?? invoice.tgttoan ?? (totalBeforeTax + totalTax));
-  const amountInWords = readVietnameseNumber(totalPayment);
+  const amountInWords = d.amountInWords || readVietnameseNumber(totalPayment);
+
+  // Chữ ký số: Ưu tiên signingTime từ XML -> nếu không có thì lấy tdlap
+  const signDate = d.signingTime ? new Date(d.signingTime) : (invoice.tdlap ? new Date(invoice.tdlap) : new Date());
 
   // Danh sách hàng hóa
   const items = d.thhdon || d.items || invoice.items || [];
@@ -527,14 +620,47 @@ export function generateInvoiceHtml(invoice, detailData = null, company = null) 
     }
     .digital-stamp {
       display: inline-block;
-      margin-top: 14px;
-      padding: 6px 12px;
-      border: 1.5px solid #16a34a;
-      border-radius: 6px;
-      background: #f0fdf4;
-      color: #15803d;
-      font-size: 12px;
+      margin-top: 10px;
+      padding: 8px 14px 10px;
+      border: 1.5px solid #009900;
+      border-radius: 0px;
+      background: #fff;
+      color: #009900;
+      font-size: 11.5px;
       text-align: left;
+      position: relative;
+      min-width: 250px;
+      max-width: 300px;
+      box-sizing: border-box;
+      line-height: 1.4;
+    }
+    .digital-stamp .stamp-title {
+      color: #009900;
+      font-weight: bold;
+      font-size: 13px;
+      margin-bottom: 3px;
+      letter-spacing: 0.2px;
+    }
+    .digital-stamp .stamp-body {
+      padding-right: 32px;
+    }
+    .digital-stamp .stamp-signer {
+      color: #009900;
+      font-size: 11.5px;
+      line-height: 1.35;
+      margin-bottom: 3px;
+      word-break: break-word;
+    }
+    .digital-stamp .stamp-date {
+      color: #009900;
+      font-size: 11px;
+    }
+    .digital-stamp .stamp-check {
+      position: absolute;
+      right: 12px;
+      bottom: 10px;
+      width: 34px;
+      height: 34px;
     }
     .watermark {
       position: absolute;
@@ -589,6 +715,7 @@ export function generateInvoiceHtml(invoice, detailData = null, company = null) 
       <div style="font-size: 13px; margin-top: 2px;">
         Ngày <b>${day}</b> tháng <b>${month}</b> năm <b>${year}</b>
       </div>
+      ${d.mccqt ? `<div style="font-size: 12px; margin-top: 4px; color: #334155; font-family: monospace;"><b>MCCQT:</b> ${d.mccqt}</div>` : ""}
     </div>
 
     <!-- Buyer Info -->
@@ -660,22 +787,31 @@ export function generateInvoiceHtml(invoice, detailData = null, company = null) 
     <table class="sign-table">
       <tr>
         <td>
-          <div class="sign-title">Người mua hàng</div>
-          <div class="sign-sub">(Ký, ghi rõ họ tên)</div>
+          <div class="sign-title">NGƯỜI MUA HÀNG</div>
+          <div class="sign-sub">(Chữ ký số (nếu có))</div>
         </td>
         <td>
-          <div class="sign-title">Người bán hàng</div>
-          <div class="sign-sub">(Ký số, đóng dấu)</div>
+          <div class="sign-title">NGƯỜI BÁN HÀNG</div>
+          <div class="sign-sub">(Chữ ký điện tử, chữ ký số)</div>
           <div class="digital-stamp">
-            <div>✔ <b>KÝ BỞI:</b> ${sellerName}</div>
-            <div><b>MST:</b> ${sellerTax}</div>
-            <div><b>Ngày ký:</b> ${formatDate(invoice.tdlap)}</div>
+            <div class="stamp-title">Signature Valid</div>
+            <div class="stamp-body">
+              <div class="stamp-signer">Ký bởi ${sellerName.toUpperCase()}</div>
+              <div class="stamp-date">Ký ngày: ${formatDateTime(signDate)}</div>
+            </div>
+            <svg class="stamp-check" viewBox="0 0 24 24" fill="none">
+              <path d="M4 12.5L9 17.5L20 6.5" stroke="#009900" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
           </div>
         </td>
       </tr>
     </table>
 
-    <div style="margin-top: 20px; text-align: center; font-size: 11px; color: #64748b; border-top: 1px dashed #cbd5e1; padding-top: 6px;">
+    <div style="margin-top: 14px; text-align: center; font-size: 11px; font-style: italic; color: #64748b;">
+      (Cần kiểm tra, đối chiếu khi lập, nhận hóa đơn)
+    </div>
+
+    <div style="margin-top: 16px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px dashed #cbd5e1; padding-top: 6px;">
       Hóa đơn điện tử được khởi tạo và lưu trữ trên hệ thống Tổng Cục Thuế & ERP FUMEE TECH.
     </div>
   </div>
