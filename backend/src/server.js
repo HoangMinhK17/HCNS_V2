@@ -2,11 +2,13 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import connectDB from "./config/db.js";
+import connectRedis from "./config/redis.js";
 import apiRouter from "./routers/apiRouter.js";
 import initCronJobs from "./config/cronJobs.js";
 
 dotenv.config();
 connectDB();
+connectRedis();
 initCronJobs();
 
 const app = express();

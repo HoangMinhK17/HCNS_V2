@@ -2,6 +2,19 @@ import Employee from "../models/Employee.js";
 import Department from "../models/Department.js";
 import Position from "../models/Position.js";
 import ExcelJS from "exceljs";
+import { cacheWrap, cacheDel, cacheDelPattern, TTL } from "../utils/cache.js";
+
+// ─── Cache keys ───────────────────────────────────────────────────────────────
+const EMP_KEY_ALL = (q) => `emp:list:${JSON.stringify(q)}`;
+const EMP_KEY_NOPAG = "emp:all:nopag";
+const EMP_KEY_ID = (id) => `emp:${id}`;
+
+// Xóa tất cả cache liên quan đến employee
+const invalidateEmpCache = async (id) => {
+  const tasks = [cacheDelPattern("emp:list:*"), cacheDel(EMP_KEY_NOPAG)];
+  if (id) tasks.push(cacheDel(EMP_KEY_ID(id)));
+  await Promise.all(tasks);
+};
 
 const genEmpCode = async () => {
   const last = await Employee.findOne({}, { empCode: 1 }).sort({ createdAt: -1 }).lean();
@@ -31,42 +44,51 @@ export const getAll = async (req, res) => {
       gender,
     } = req.query;
 
-    const filter = { deletedAt: null };
-    if (status) filter.status = status;
-    if (department) filter.department = department;
-    if (position) filter.position = position;
-    if (contractType) filter.contractType = contractType;
-    if (gender) filter.gender = gender;
-    if (search.trim()) {
-      filter.$or = [
-        { fullName: { $regex: search.trim(), $options: "i" } },
-        { empCode: { $regex: search.trim(), $options: "i" } },
-        { phone: { $regex: search.trim(), $options: "i" } },
-        { email: { $regex: search.trim(), $options: "i" } },
-      ];
-    }
+    // Khi có search (text động) → bỏ qua cache để luôn trả đúng kết quả
+    const useCache = !search.trim();
+    const cacheKey = EMP_KEY_ALL({ page, limit, department, position, status, contractType, gender });
 
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-    const [total, employees] = await Promise.all([
-      Employee.countDocuments(filter),
-      Employee.find(filter)
-        .populate(POPULATE_OPTS)
-        .sort({ createdAt: 1 })
-        .skip(skip)
-        .limit(parseInt(limit))
-        .lean(),
-    ]);
-
-    return res.status(200).json({
-      success: true,
-      data: employees,
-      pagination: {
-        total,
-        page: parseInt(page),
-        limit: parseInt(limit),
-        totalPages: Math.ceil(total / parseInt(limit)),
+    const result = await cacheWrap(
+      useCache ? cacheKey : null,
+      async () => {
+        const filter = { deletedAt: null };
+        if (status) filter.status = status;
+        if (department) filter.department = department;
+        if (position) filter.position = position;
+        if (contractType) filter.contractType = contractType;
+        if (gender) filter.gender = gender;
+        if (search.trim()) {
+          filter.$or = [
+            { fullName: { $regex: search.trim(), $options: "i" } },
+            { empCode: { $regex: search.trim(), $options: "i" } },
+            { phone: { $regex: search.trim(), $options: "i" } },
+            { email: { $regex: search.trim(), $options: "i" } },
+          ];
+        }
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+        const [total, employees] = await Promise.all([
+          Employee.countDocuments(filter),
+          Employee.find(filter)
+            .populate(POPULATE_OPTS)
+            .sort({ createdAt: 1 })
+            .skip(skip)
+            .limit(parseInt(limit))
+            .lean(),
+        ]);
+        return {
+          data: employees,
+          pagination: {
+            total,
+            page: parseInt(page),
+            limit: parseInt(limit),
+            totalPages: Math.ceil(total / parseInt(limit)),
+          },
+        };
       },
-    });
+      TTL.SEMI_STATIC
+    );
+
+    return res.status(200).json({ success: true, ...result });
   } catch (e) {
     return res.status(500).json({ success: false, message: e.message });
   }
@@ -74,11 +96,15 @@ export const getAll = async (req, res) => {
 
 export const getAllNoPagination = async (req, res) => {
   try {
-    const employees = await Employee.find({ deletedAt: null, status: { $ne: "inactive" } })
-      .select("fullName empCode email")
-      .sort({ createdAt: 1 })
-      .lean();
-    return res.status(200).json({ success: true, data: employees });
+    const data = await cacheWrap(
+      EMP_KEY_NOPAG,
+      () => Employee.find({ deletedAt: null, status: { $ne: "inactive" } })
+        .select("fullName empCode email")
+        .sort({ createdAt: 1 })
+        .lean(),
+      TTL.SEMI_STATIC
+    );
+    return res.status(200).json({ success: true, data });
   } catch (e) {
     return res.status(500).json({ success: false, message: e.message });
   }
@@ -86,11 +112,18 @@ export const getAllNoPagination = async (req, res) => {
 
 export const getById = async (req, res) => {
   try {
-    const doc = await Employee.findOne({ _id: req.params.id, deletedAt: null })
-      .populate(POPULATE_OPTS)
-      .lean();
-    if (!doc) return res.status(404).json({ success: false, message: "Không tìm thấy nhân viên" });
-    return res.status(200).json({ success: true, data: doc });
+    const data = await cacheWrap(
+      EMP_KEY_ID(req.params.id),
+      async () => {
+        const doc = await Employee.findOne({ _id: req.params.id, deletedAt: null })
+          .populate(POPULATE_OPTS)
+          .lean();
+        return doc || null;
+      },
+      TTL.SEMI_STATIC
+    );
+    if (!data) return res.status(404).json({ success: false, message: "Không tìm thấy nhân viên" });
+    return res.status(200).json({ success: true, data });
   } catch (e) {
     return res.status(500).json({ success: false, message: e.message });
   }
@@ -116,6 +149,7 @@ export const create = async (req, res) => {
 
     const doc = await Employee.create(body);
     const populated = await Employee.findById(doc._id).populate(POPULATE_OPTS).lean();
+    await invalidateEmpCache();
     return res.status(201).json({ success: true, data: populated });
   } catch (e) {
     return res.status(500).json({ success: false, message: e.message });
@@ -141,6 +175,7 @@ export const update = async (req, res) => {
       { returnDocument: 'after', runValidators: true }
     ).populate(POPULATE_OPTS);
     if (!doc) return res.status(404).json({ success: false, message: "Không tìm thấy nhân viên" });
+    await invalidateEmpCache(req.params.id);
     return res.status(200).json({ success: true, data: doc });
   } catch (e) {
     return res.status(500).json({ success: false, message: e.message });
@@ -155,6 +190,7 @@ export const remove = async (req, res) => {
       { returnDocument: 'after' }
     );
     if (!doc) return res.status(404).json({ success: false, message: "Không tìm thấy nhân viên" });
+    await invalidateEmpCache(req.params.id);
     return res.status(200).json({ success: true, message: "Đã xóa nhân viên" });
   } catch (e) {
     return res.status(500).json({ success: false, message: e.message });
@@ -181,6 +217,7 @@ export const addWorkHistory = async (req, res) => {
     if (req.body.toSalary) emp.salary = req.body.toSalary;
 
     await emp.save();
+    await invalidateEmpCache(req.params.id);
     return res.status(200).json({ success: true, data: emp });
   } catch (e) {
     return res.status(500).json({ success: false, message: e.message });
