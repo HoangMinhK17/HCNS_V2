@@ -622,45 +622,51 @@ export function generateInvoiceHtml(invoice, detailData = null, company = null) 
       display: inline-block;
       margin-top: 10px;
       padding: 8px 14px 10px;
-      border: 1.5px solid #009900;
+      border: 1.5px solid #3a6068;
       border-radius: 0px;
       background: #fff;
-      color: #009900;
-      font-size: 11.5px;
+      font-size: 12px;
       text-align: left;
       position: relative;
-      min-width: 250px;
-      max-width: 300px;
+      min-width: 270px;
+      max-width: 320px;
       box-sizing: border-box;
-      line-height: 1.4;
+      line-height: 1.45;
     }
     .digital-stamp .stamp-title {
-      color: #009900;
+      color: #cc0000;
       font-weight: bold;
       font-size: 13px;
-      margin-bottom: 3px;
+      margin-bottom: 4px;
       letter-spacing: 0.2px;
+      font-family: Arial, "Segoe UI", sans-serif;
     }
     .digital-stamp .stamp-body {
-      padding-right: 32px;
+      padding-right: 0px;
+      position: relative;
+      z-index: 1;
     }
     .digital-stamp .stamp-signer {
-      color: #009900;
+      color: #cc0000;
       font-size: 11.5px;
       line-height: 1.35;
       margin-bottom: 3px;
       word-break: break-word;
+      font-family: Arial, "Segoe UI", sans-serif;
     }
     .digital-stamp .stamp-date {
-      color: #009900;
+      color: #cc0000;
       font-size: 11px;
+      font-family: Arial, "Segoe UI", sans-serif;
     }
     .digital-stamp .stamp-check {
       position: absolute;
-      right: 12px;
-      bottom: 10px;
-      width: 34px;
-      height: 34px;
+      right: 40px;
+      top: 20px;
+      width: 78px;
+      height: 60px;
+      pointer-events: none;
+      z-index: 2;
     }
     .watermark {
       position: absolute;
@@ -787,20 +793,22 @@ export function generateInvoiceHtml(invoice, detailData = null, company = null) 
     <table class="sign-table">
       <tr>
         <td>
-          <div class="sign-title">NGƯỜI MUA HÀNG</div>
-          <div class="sign-sub">(Chữ ký số (nếu có))</div>
+          <div class="sign-title">Người mua hàng <i>(Buyer)</i></div>
+          <div class="sign-sub">(Ký, ghi rõ họ, tên)</div>
+          <div class="sign-sub"><i>(Signature, full name)</i></div>
         </td>
         <td>
-          <div class="sign-title">NGƯỜI BÁN HÀNG</div>
-          <div class="sign-sub">(Chữ ký điện tử, chữ ký số)</div>
+          <div class="sign-title">Người bán hàng <i>(Seller)</i></div>
+          <div class="sign-sub">(Ký, ghi rõ họ, tên)</div>
+          <div class="sign-sub"><i>(Signature, full name)</i></div>
           <div class="digital-stamp">
-            <div class="stamp-title">Signature Valid</div>
+            <div class="stamp-title">Signature valid</div>
             <div class="stamp-body">
-              <div class="stamp-signer">Ký bởi ${sellerName.toUpperCase()}</div>
-              <div class="stamp-date">Ký ngày: ${formatDateTime(signDate)}</div>
+              <div class="stamp-signer">Ký bởi: ${sellerName.toUpperCase()}</div>
+              <div class="stamp-date">Ký ngày: ${formatDate(signDate)}</div>
             </div>
-            <svg class="stamp-check" viewBox="0 0 24 24" fill="none">
-              <path d="M4 12.5L9 17.5L20 6.5" stroke="#009900" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            <svg class="stamp-check" viewBox="0 0 115 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M6 44 C16 52 28 64 40 80 C58 48 86 18 114 2 C94 20 54 62 38 88 C22 70 12 54 6 44 Z" fill="#00a651"/>
             </svg>
           </div>
         </td>

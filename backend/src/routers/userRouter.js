@@ -5,12 +5,13 @@ import {
   changePassword,
 } from "../controllers/userController.js";
 import { verifyToken, checkRole, checkPermission } from "../middleware/authMiddleware.js";
+import { authLimiter } from "../middleware/rateLimitMiddleware.js";
 
 const router = express.Router();
 
 
-router.post("/login", loginUser);
-router.post("/refresh-token", refreshToken);
+router.post("/login", authLimiter, loginUser);
+router.post("/refresh-token", authLimiter, refreshToken);
 router.post("/logout", logout);
 
 router.use(verifyToken);

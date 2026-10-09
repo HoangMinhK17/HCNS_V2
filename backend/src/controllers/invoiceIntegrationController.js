@@ -896,8 +896,14 @@ export const getSyncDashboardStatus = async (req, res) => {
     const totalInvoices = await GdtInvoice.countDocuments();
     const syncedMisaInvoices = await GdtInvoice.countDocuments({ sync_misa_status: "synced_misa" });
     const pendingInvoices = await GdtInvoice.countDocuments({ sync_misa_status: "pending" });
-    const recentInvoices = await GdtInvoice.find().sort({ tdlap: -1 });
-    const recentFinanceSync = await MisaFinanceSync.find().sort({ createdAt: -1 }).limit(10);
+    const recentInvoices = await GdtInvoice.find()
+      .sort({ tdlap: -1 })
+      .limit(200)
+      .lean();
+    const recentFinanceSync = await MisaFinanceSync.find()
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .lean();
 
     return res.status(200).json({
       success: true,

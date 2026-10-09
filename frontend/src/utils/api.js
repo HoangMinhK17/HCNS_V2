@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { notification } from 'antd';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:3001/api',
@@ -32,6 +33,38 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+
+    // ── Xử lý Rate Limit 429 ────────────────────────────────────────
+    if (error.response?.status === 429) {
+      // Lấy message từ server (đã set trong rateLimitMiddleware)
+      const serverMsg =
+        error.response?.data?.message ||
+        'Quá nhiều yêu cầu. Vui lòng thử lại sau ít phút.';
+
+      // Lấy thời gian reset từ header chuẩn RateLimit-Reset (epoch seconds)
+      const resetHeader = error.response?.headers?.['ratelimit-reset'];
+      let countdownMsg = '';
+      if (resetHeader) {
+        const resetAt = Number(resetHeader) * 1000; // chuyển sang ms
+        const secondsLeft = Math.max(0, Math.ceil((resetAt - Date.now()) / 1000));
+        if (secondsLeft > 0) {
+          countdownMsg = ` (thử lại sau ${secondsLeft}s)`;
+        }
+      }
+
+      notification.warning({
+        message: '⚠️ Giới hạn yêu cầu',
+        description: serverMsg + countdownMsg,
+        placement: 'topRight',
+        duration: 6,
+        style: {
+          borderRadius: 12,
+          borderLeft: '4px solid #faad14',
+        },
+      });
+
+      return Promise.reject(error);
+    }
 
     // Nếu bị lỗi 401 TOKEN_EXPIRED và chưa retry
     if (

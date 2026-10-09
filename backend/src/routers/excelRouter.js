@@ -1,6 +1,7 @@
 import express from "express";
 import multer from "multer";
 import { downloadTemplate, importPersonnel, exportPersonnel } from "../controllers/excelController.js";
+import { heavyLimiter } from "../middleware/rateLimitMiddleware.js";
 
 const router = express.Router();
 
@@ -8,8 +9,8 @@ const router = express.Router();
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
-router.get("/template", downloadTemplate);
-router.post("/import", upload.single("file"), importPersonnel);
-router.get("/export", exportPersonnel);
+router.get("/template", heavyLimiter, downloadTemplate);
+router.post("/import", heavyLimiter, upload.single("file"), importPersonnel);
+router.get("/export", heavyLimiter, exportPersonnel);
 
 export default router;

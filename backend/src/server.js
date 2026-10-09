@@ -5,6 +5,7 @@ import connectDB from "./config/db.js";
 import connectRedis from "./config/redis.js";
 import apiRouter from "./routers/apiRouter.js";
 import initCronJobs from "./config/cronJobs.js";
+import { globalLimiter } from "./middleware/rateLimitMiddleware.js";
 
 dotenv.config();
 connectDB();
@@ -19,7 +20,8 @@ app.use(cors({
   credentials: true,
 }));
 
-app.use("/api/v1/fumee", apiRouter);
+// Áp dụng rate limit toàn cục trước khi vào router
+app.use("/api/v1/fumee", globalLimiter, apiRouter);
 
 app.listen(process.env.PORT || 3001, () => {
   console.log(`Server is running on port ${process.env.PORT || 3001}`);
