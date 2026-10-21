@@ -19,6 +19,7 @@ import {
   renderPdfFromHtml,
   streamInvoicesZip
 } from "../services/gdtInvoiceExportService.js";
+import { invalidateInvoiceCache } from "./invoiceIntegrationController.js";
 
 let _browser = null;
 let _page = null;
@@ -254,6 +255,10 @@ const saveInvoices = async (list) => {
     } catch (e) {
       console.warn("[GDT Save]:", e.message);
     }
+  }
+
+  if (insertedCount > 0) {
+    await invalidateInvoiceCache();
   }
 
   console.log(`[GDT Save] Tổng xử lý: ${list.length} | Thêm mới: ${insertedCount} | Đã có (bỏ qua): ${skippedCount}`);

@@ -11,6 +11,7 @@ import {
   pushCaReceiptToMisa,
   pushCaPaymentToMisa,
   getSyncDashboardStatus,
+  getInvoicesList,
   deleteInvoice,
   bulkDeleteInvoices,
 } from "../controllers/invoiceIntegrationController.js";
@@ -30,8 +31,11 @@ import { heavyLimiter } from "../middleware/rateLimitMiddleware.js";
 
 const router = express.Router();
 
-// Tổng quan Dashboard & Trạng thái kết nối
+// Tổng quan Dashboard, Danh sách HĐĐT & Trạng thái kết nối (Redis cached)
 router.get("/status", getSyncDashboardStatus);
+router.get("/", getInvoicesList);
+router.get("/list", getInvoicesList);
+router.get("/invoices", getInvoicesList);
 
 // Xóa hóa đơn trong CSDL
 router.delete("/:id", deleteInvoice);

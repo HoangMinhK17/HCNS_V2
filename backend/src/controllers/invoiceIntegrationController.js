@@ -1,6 +1,19 @@
 import crypto from "crypto";
 import GdtInvoice from "../models/GdtInvoice.js";
 import MisaFinanceSync from "../models/MisaFinanceSync.js";
+import { cacheWrap, cacheDelPattern, TTL } from "../utils/cache.js";
+
+// ─── Cache Keys & Invalidation cho Hóa đơn điện tử ─────────────────────────────
+export const INVOICE_CACHE_KEY_DASHBOARD = "inv:dashboard_db_data";
+export const INVOICE_CACHE_KEY_LIST = (q) => `inv:list:${JSON.stringify(q)}`;
+
+export const invalidateInvoiceCache = async () => {
+  try {
+    await cacheDelPattern("inv:*");
+  } catch (err) {
+    console.warn("[Cache] Xóa cache hóa đơn thất bại:", err.message);
+  }
+};
 
 // Session / Token Cache in-memory
 const AUTH_CACHE = {
@@ -331,6 +344,9 @@ export const pullInboundInvoices = async (req, res) => {
       }
     }
 
+    // Xóa cache Redis để danh sách hóa đơn mới được cập nhật
+    await invalidateInvoiceCache();
+
     return res.status(200).json({
       success: true,
       message: `Đã xử lý ${invoiceList.length} HĐ: Thêm mới ${insertedCount}, Đã có sẵn (bỏ qua): ${skippedCount}`,
@@ -634,6 +650,9 @@ export const pushPuVoucherToMisa = async (req, res) => {
     invoice.misa_synced_at = new Date();
     await invoice.save();
 
+    // Xóa cache Redis do trạng thái hóa đơn đã chuyển sang synced_misa
+    await invalidateInvoiceCache();
+
     return res.status(200).json({
       success: true,
       message: "Đã đẩy Chứng từ Mua hàng và Ghi sổ sang MISA AMIS thành công!",
@@ -759,6 +778,8 @@ export const pushCaReceiptToMisa = async (req, res) => {
       posted_ledger_at: new Date()
     });
 
+    await invalidateInvoiceCache();
+
     return res.status(200).json({
       success: true,
       message: "Đã tạo Phiếu Thu và Ghi sổ MISA thành công!",
@@ -876,6 +897,8 @@ export const pushCaPaymentToMisa = async (req, res) => {
       posted_ledger_at: new Date()
     });
 
+    await invalidateInvoiceCache();
+
     return res.status(200).json({
       success: true,
       message: "Đã tạo Phiếu Chi và Ghi sổ MISA thành công!",
@@ -889,21 +912,39 @@ export const pushCaPaymentToMisa = async (req, res) => {
 };
 
 /**
- * 2.5 Lấy danh sách hóa đơn và tình trạng kết nối
+ * 2.5 Lấy danh sách hóa đơn và tình trạng kết nối (Redis cache)
  */
 export const getSyncDashboardStatus = async (req, res) => {
   try {
-    const totalInvoices = await GdtInvoice.countDocuments();
-    const syncedMisaInvoices = await GdtInvoice.countDocuments({ sync_misa_status: "synced_misa" });
-    const pendingInvoices = await GdtInvoice.countDocuments({ sync_misa_status: "pending" });
-    const recentInvoices = await GdtInvoice.find()
-      .sort({ tdlap: -1 })
-      .limit(200)
-      .lean();
-    const recentFinanceSync = await MisaFinanceSync.find()
-      .sort({ createdAt: -1 })
-      .limit(10)
-      .lean();
+    const { refresh } = req.query;
+    if (refresh === "true" || refresh === "1") {
+      await invalidateInvoiceCache();
+    }
+
+    const cachedDbData = await cacheWrap(
+      INVOICE_CACHE_KEY_DASHBOARD,
+      async () => {
+        const [totalInvoices, syncedMisaInvoices, pendingInvoices, recentInvoices, recentFinanceSync] =
+          await Promise.all([
+            GdtInvoice.countDocuments(),
+            GdtInvoice.countDocuments({ sync_misa_status: "synced_misa" }),
+            GdtInvoice.countDocuments({ sync_misa_status: "pending" }),
+            GdtInvoice.find().sort({ tdlap: -1 }).limit(200).lean(),
+            MisaFinanceSync.find().sort({ createdAt: -1 }).limit(10).lean(),
+          ]);
+
+        return {
+          stats: {
+            totalInvoices,
+            syncedMisaInvoices,
+            pendingInvoices,
+          },
+          recentInvoices,
+          recentFinanceSync,
+        };
+      },
+      TTL.SEMI_STATIC
+    );
 
     return res.status(200).json({
       success: true,
@@ -911,25 +952,113 @@ export const getSyncDashboardStatus = async (req, res) => {
         gdt: {
           hasToken: !!AUTH_CACHE.gdt.token,
           mst: AUTH_CACHE.gdt.mst,
-          expiresAt: AUTH_CACHE.gdt.expiresAt
+          expiresAt: AUTH_CACHE.gdt.expiresAt,
         },
         misa: {
           hasToken: !!AUTH_CACHE.misa.token,
           branchId: AUTH_CACHE.misa.branchId,
           username: AUTH_CACHE.misa.username,
-          expiresAt: AUTH_CACHE.misa.expiresAt
-        }
+          expiresAt: AUTH_CACHE.misa.expiresAt,
+        },
       },
-      stats: {
-        totalInvoices,
-        syncedMisaInvoices,
-        pendingInvoices
-      },
-      recentInvoices,
-      recentFinanceSync
+      stats: cachedDbData?.stats || { totalInvoices: 0, syncedMisaInvoices: 0, pendingInvoices: 0 },
+      recentInvoices: cachedDbData?.recentInvoices || [],
+      recentFinanceSync: cachedDbData?.recentFinanceSync || [],
     });
   } catch (error) {
     console.error("[Dashboard Status Error]:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * Lấy danh sách hóa đơn từ CSDL (hỗ trợ phân trang, tìm kiếm, lọc trạng thái, ngày tháng) có Redis cache
+ */
+export const getInvoicesList = async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 50,
+      search = "",
+      status = "",
+      startDate = "",
+      endDate = "",
+      refresh = "false",
+    } = req.query;
+
+    if (refresh === "true" || refresh === "1") {
+      await invalidateInvoiceCache();
+    }
+
+    const queryKey = {
+      page: Math.max(1, parseInt(page) || 1),
+      limit: Math.max(1, parseInt(limit) || 50),
+      search: (search || "").trim(),
+      status: (status || "").trim(),
+      startDate: (startDate || "").trim(),
+      endDate: (endDate || "").trim(),
+    };
+
+    const cacheKey = INVOICE_CACHE_KEY_LIST(queryKey);
+
+    const result = await cacheWrap(
+      cacheKey,
+      async () => {
+        const filter = {};
+        if (queryKey.status) {
+          filter.sync_misa_status = queryKey.status;
+        }
+
+        if (queryKey.startDate || queryKey.endDate) {
+          filter.tdlap = {};
+          if (queryKey.startDate) {
+            filter.tdlap.$gte = new Date(queryKey.startDate);
+          }
+          if (queryKey.endDate) {
+            const end = new Date(queryKey.endDate);
+            end.setHours(23, 59, 59, 999);
+            filter.tdlap.$lte = end;
+          }
+        }
+
+        if (queryKey.search) {
+          const s = queryKey.search;
+          filter.$or = [
+            { shdon: { $regex: s, $options: "i" } },
+            { khhdon: { $regex: s, $options: "i" } },
+            { nbmst: { $regex: s, $options: "i" } },
+            { nbten: { $regex: s, $options: "i" } },
+          ];
+        }
+
+        const skip = (queryKey.page - 1) * queryKey.limit;
+
+        const [total, invoices] = await Promise.all([
+          GdtInvoice.countDocuments(filter),
+          GdtInvoice.find(filter)
+            .sort({ tdlap: -1, createdAt: -1 })
+            .skip(skip)
+            .limit(queryKey.limit)
+            .lean(),
+        ]);
+
+        return {
+          total,
+          page: queryKey.page,
+          limit: queryKey.limit,
+          totalPages: Math.ceil(total / queryKey.limit),
+          invoices,
+        };
+      },
+      TTL.SEMI_STATIC
+    );
+
+    return res.status(200).json({
+      success: true,
+      ...result,
+    });
+  } catch (error) {
+    console.error("[Get Invoices List Error]:", error);
     return res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -944,6 +1073,7 @@ export const deleteInvoice = async (req, res) => {
     if (!deleted) {
       return res.status(404).json({ success: false, message: "Không tìm thấy hóa đơn cần xóa" });
     }
+    await invalidateInvoiceCache();
     return res.status(200).json({ success: true, message: "Đã xóa hóa đơn thành công", id });
   } catch (error) {
     console.error("[Delete Invoice Error]:", error);
@@ -961,6 +1091,7 @@ export const bulkDeleteInvoices = async (req, res) => {
       return res.status(400).json({ success: false, message: "Vui lòng chọn ít nhất 1 hóa đơn để xóa" });
     }
     const result = await GdtInvoice.deleteMany({ _id: { $in: ids } });
+    await invalidateInvoiceCache();
     return res.status(200).json({
       success: true,
       message: `Đã xóa thành công ${result.deletedCount} hóa đơn`,
@@ -971,3 +1102,4 @@ export const bulkDeleteInvoices = async (req, res) => {
     return res.status(500).json({ success: false, message: error.message });
   }
 };
+

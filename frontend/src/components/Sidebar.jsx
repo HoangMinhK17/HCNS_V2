@@ -502,7 +502,7 @@ export default function Sidebar({
         fontSize: 11, color: '#9ca3af', textAlign: 'center',
         whiteSpace: 'nowrap', overflow: 'hidden',
       }}>
-        {!collapsed ? 'FMS HRM v2.0 · Phase 2' : 'v2.0'}
+        {!collapsed ? 'FMS HRM v3.0' : 'v3.0'}
       </div>
     </div>
   );

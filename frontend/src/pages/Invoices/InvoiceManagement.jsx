@@ -44,11 +44,27 @@ import {
   CodeOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import {
+  getInvoiceDashboard,
+  getGdtPuppetStatus,
+  startGdtSession,
+  submitGdtLogin,
+  scrapeGdtInvoices,
+  closeGdtSession,
+  getGdtCaptcha,
+  setGdtToken,
+  downloadXmlFromGdt,
+  setMisaToken,
+  pushPuVoucherToMisa,
+  deleteInvoice as apiDeleteInvoice,
+  bulkDeleteInvoices as apiBulkDeleteInvoices,
+  getInvoicePdfUrl,
+  downloadInvoiceXmlFile,
+  downloadInvoicesZip,
+} from '../../utils/invoiceApi';
 
 const { Title, Text, Paragraph } = Typography;
 const { RangePicker } = DatePicker;
-
-const API_BASE = '/api/v1/fumee/invoices';
 
 export default function InvoiceManagement() {
   const [loading, setLoading] = useState(false);
@@ -100,8 +116,7 @@ export default function InvoiceManagement() {
     const interval = setInterval(async () => {
       if (puppetSession.status === 'idle') return;
       try {
-        const res = await fetch(`${API_BASE}/gdt/puppet/status`);
-        const d = await res.json();
+        const d = await getGdtPuppetStatus();
         if (d.success) {
           setPuppetSession(prev => ({
             ...prev,
@@ -120,31 +135,31 @@ export default function InvoiceManagement() {
     fetchDashboardStatus();
   }, []);
 
-  const fetchDashboardStatus = async () => {
+  const fetchDashboardStatus = async (forceRefresh = false) => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE}/status`);
-      const data = await res.json();
+      const data = await getInvoiceDashboard(forceRefresh);
       if (data.success) {
         setStatusData(data);
         setInvoices(data.recentInvoices || []);
+        if (forceRefresh) {
+          message.success('Đã làm mới và đồng bộ lại từ CSDL!');
+        }
       }
     } catch (err) {
-      message.error('Không thể tải trạng thái hệ thống: ' + err.message);
+      message.error('Không thể tải trạng thái hệ thống: ' + (err.response?.data?.message || err.message));
     } finally {
       setLoading(false);
     }
   };
 
-  // Khởi động trình duyệt Chrome thật trên màn hình
   const handleStartPuppetSession = async () => {
     try {
       setLoading(true);
       setPuppetSession(prev => ({ ...prev, status: 'launching', lastError: '' }));
       message.loading({ content: 'Đang kết nối Tổng Cục Thuế và lấy Captcha...', key: 'puppet', duration: 0 });
 
-      const res = await fetch(`${API_BASE}/gdt/puppet/start`, { method: 'POST' });
-      const data = await res.json();
+      const data = await startGdtSession();
 
       if (data.success) {
         setPuppetSession(prev => ({
@@ -169,8 +184,9 @@ export default function InvoiceManagement() {
         message.error({ content: data.message, key: 'puppet' });
       }
     } catch (err) {
-      setPuppetSession(prev => ({ ...prev, status: 'error', lastError: err.message }));
-      message.error({ content: 'Lỗi: ' + err.message, key: 'puppet' });
+      const msg = err.response?.data?.message || err.message;
+      setPuppetSession(prev => ({ ...prev, status: 'error', lastError: msg }));
+      message.error({ content: 'Lỗi: ' + msg, key: 'puppet' });
     } finally {
       setLoading(false);
     }
@@ -180,11 +196,11 @@ export default function InvoiceManagement() {
   const handleClosePuppetSession = async () => {
     try {
       setLoading(true);
-      await fetch(`${API_BASE}/gdt/puppet/close`, { method: 'POST' });
+      await closeGdtSession();
       setPuppetSession({ status: 'idle', isLoggedIn: false, captchaImage: '', captchaKey: '', lastError: '' });
       message.info('Đã đóng trình duyệt Chrome.');
     } catch (err) {
-      message.error('Lỗi khi đóng trình duyệt: ' + err.message);
+      message.error('Lỗi khi đóng trình duyệt: ' + (err.response?.data?.message || err.message));
     } finally {
       setLoading(false);
     }
@@ -203,22 +219,17 @@ export default function InvoiceManagement() {
       const startDate = dateRange[0].format('DD/MM/YYYY');
       const endDate   = dateRange[1].format('DD/MM/YYYY');
 
-      const res = await fetch(`${API_BASE}/gdt/puppet/login?startDate=${startDate}&endDate=${endDate}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          captcha: puppetCaptchaInput,
-          username: puppetUsername,
-          password: puppetPassword,
-        }),
+      const data = await submitGdtLogin({
+        captcha: puppetCaptchaInput,
+        username: puppetUsername,
+        password: puppetPassword,
+        startDate,
+        endDate,
       });
-      const data = await res.json();
 
       if (data.success) {
         setPuppetSession(prev => ({ ...prev, status: 'logged_in', isLoggedIn: true }));
         setIsCaptchaModalVisible(false);
-
-        // Backend đã tự động kéo hóa đơn — hiển thị kết quả
         if (data.autoScrape) {
           message.success({
             content: `✅ Đăng nhập thành công! Đã kéo và lưu ${data.autoScrape.count} hóa đơn (${data.autoScrape.startDate} → ${data.autoScrape.endDate})`,
@@ -228,11 +239,8 @@ export default function InvoiceManagement() {
         } else {
           message.success({ content: data.message || 'Đăng nhập TCT thành công!', key: 'puppet_login', duration: 4 });
         }
-
-        // Làm mới bảng dữ liệu
         fetchDashboardStatus();
       } else {
-        // Captcha sai — lấy captcha mới
         if (data.captchaImage) {
           setPuppetSession(prev => ({
             ...prev,
@@ -244,7 +252,7 @@ export default function InvoiceManagement() {
         message.error({ content: data.message || 'Đăng nhập thất bại, mã captcha mới đã được tải lại', key: 'puppet_login' });
       }
     } catch (err) {
-      message.error({ content: 'Lỗi: ' + err.message, key: 'puppet_login' });
+      message.error({ content: 'Lỗi: ' + (err.response?.data?.message || err.message), key: 'puppet_login' });
     } finally {
       setLoading(false);
     }
@@ -263,8 +271,7 @@ export default function InvoiceManagement() {
       const endDate = dateRange[1].format('DD/MM/YYYY');
       message.loading({ content: 'Đang kéo hóa đơn từ TCT...', key: 'pull', duration: 0 });
 
-      const res = await fetch(`${API_BASE}/gdt/puppet/invoices?startDate=${startDate}&endDate=${endDate}&size=100`);
-      const data = await res.json();
+      const data = await scrapeGdtInvoices({ startDate, endDate, size: 100 });
 
       if (data.success) {
         message.success({
@@ -280,7 +287,7 @@ export default function InvoiceManagement() {
         message.error({ content: data.message || 'Không thể kéo hóa đơn', key: 'pull' });
       }
     } catch (err) {
-      message.error({ content: 'Lỗi: ' + err.message, key: 'pull' });
+      message.error({ content: 'Lỗi: ' + (err.response?.data?.message || err.message), key: 'pull' });
     } finally {
       setLoading(false);
     }
@@ -290,8 +297,7 @@ export default function InvoiceManagement() {
   const handleDeleteInvoice = async (id) => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE}/invoices/${id}`, { method: 'DELETE' });
-      const data = await res.json();
+      const data = await apiDeleteInvoice(id);
       if (data.success) {
         message.success('Đã xóa hóa đơn thành công');
         fetchDashboardStatus();
@@ -299,7 +305,7 @@ export default function InvoiceManagement() {
         message.error(data.message || 'Xóa hóa đơn thất bại');
       }
     } catch (err) {
-      message.error('Lỗi khi xóa: ' + err.message);
+      message.error('Lỗi khi xóa: ' + (err.response?.data?.message || err.message));
     } finally {
       setLoading(false);
     }
@@ -310,12 +316,7 @@ export default function InvoiceManagement() {
     if (selectedRowKeys.length === 0) return;
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE}/invoices/bulk-delete`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids: selectedRowKeys })
-      });
-      const data = await res.json();
+      const data = await apiBulkDeleteInvoices(selectedRowKeys);
       if (data.success) {
         message.success(data.message || `Đã xóa ${selectedRowKeys.length} hóa đơn thành công`);
         setSelectedRowKeys([]);
@@ -325,7 +326,7 @@ export default function InvoiceManagement() {
         message.error(data.message || 'Xóa thất bại');
       }
     } catch (err) {
-      message.error('Lỗi khi xóa: ' + err.message);
+      message.error('Lỗi khi xóa: ' + (err.response?.data?.message || err.message));
     } finally {
       setLoading(false);
     }
@@ -336,22 +337,21 @@ export default function InvoiceManagement() {
 
   // Mở/Tải PDF bản thể hiện
   const handleDownloadPdf = (invoice) => {
-    window.open(`${API_BASE}/invoices/${invoice._id}/pdf`, '_blank');
+    window.open(getInvoicePdfUrl(invoice._id), '_blank');
   };
 
   // Tải file XML gốc
   const handleDownloadXmlFile = async (invoice) => {
     try {
-      const res = await fetch(`${API_BASE}/invoices/${invoice._id}/xml`);
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
+      const response = await downloadInvoiceXmlFile(invoice._id);
+      if (response.status !== 200) {
         message.warning({
-          content: err.message || 'Chưa có file XML. Hãy khởi động phiên TCT và đăng nhập để tải XML từ Tổng Cục Thuế.',
+          content: 'Chưa có file XML. Hãy khởi động phiên TCT và đăng nhập để tải XML từ Tổng Cục Thuế.',
           duration: 5
         });
         return;
       }
-      const blob = await res.blob();
+      const blob = response.data;
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -364,7 +364,13 @@ export default function InvoiceManagement() {
       window.URL.revokeObjectURL(url);
       message.success(`Đã tải file XML hóa đơn ${invoice.shdon}!`);
     } catch (e) {
-      message.error('Lỗi khi tải file XML: ' + e.message);
+      const errMsg = e.response?.data?.message || e.message;
+      message.warning({
+        content: e.response?.status === 404
+          ? 'Chưa có file XML. Hãy khởi động phiên TCT và đăng nhập để tải XML từ Tổng Cục Thuế.'
+          : 'Lỗi khi tải file XML: ' + errMsg,
+        duration: 5
+      });
     }
   };
 
@@ -375,18 +381,8 @@ export default function InvoiceManagement() {
       message.loading({ content: 'Đang tạo file ZIP trọn bộ hóa đơn (PDF + XML)...', key: 'zip_dl', duration: 0 });
       const targetIds = Array.isArray(ids) && ids.length > 0 ? ids : (selectedRowKeys.length > 0 ? selectedRowKeys : []);
 
-      const response = await fetch(`${API_BASE}/invoices/download-zip`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids: targetIds })
-      });
-
-      if (!response.ok) {
-        const errJson = await response.json().catch(() => ({}));
-        throw new Error(errJson.message || `Lỗi tải file ZIP (HTTP ${response.status})`);
-      }
-
-      const blob = await response.blob();
+      const response = await downloadInvoicesZip(targetIds);
+      const blob = response.data;
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -397,23 +393,22 @@ export default function InvoiceManagement() {
       window.URL.revokeObjectURL(url);
       message.success({ content: 'Đã tải xong file ZIP trọn bộ hóa đơn!', key: 'zip_dl', duration: 3 });
     } catch (err) {
-      message.error({ content: 'Không thể tải ZIP: ' + err.message, key: 'zip_dl', duration: 4 });
+      message.error({ content: 'Không thể tải ZIP: ' + (err.response?.data?.message || err.message), key: 'zip_dl', duration: 4 });
     } finally {
       setDownloadingZip(false);
     }
   };
 
-  // ── DIRECT API FLOW (cũ) — chỉ dùng khi có cookie thủ công ──
+  // DIRECT API FLOW (cũ) — chỉ dùng khi có cookie thủ công
   const fetchCaptcha = async () => {
     try {
       setCaptchaLoading(true);
-      const res = await fetch(`${API_BASE}/gdt/captcha`);
-      const json = await res.json();
+      const json = await getGdtCaptcha();
       if (json.success && json.data) {
         setCaptchaData(json.data);
       }
     } catch (err) {
-      message.error('Lỗi captcha: ' + err.message);
+      message.error('Lỗi captcha: ' + (err.response?.data?.message || err.message));
     } finally {
       setCaptchaLoading(false);
     }
@@ -423,12 +418,7 @@ export default function InvoiceManagement() {
   const handleSetTokenManually = async (values) => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE}/gdt/set-token`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(values)
-      });
-      const data = await res.json();
+      const data = await setGdtToken(values);
       if (data.success) {
         message.success('Cập nhật Token TCT thành công!');
         setIsTokenModalVisible(false);
@@ -437,7 +427,7 @@ export default function InvoiceManagement() {
         message.error(data.message || 'Lỗi cập nhật');
       }
     } catch (err) {
-      message.error('Lỗi kết nối: ' + err.message);
+      message.error('Lỗi kết nối: ' + (err.response?.data?.message || err.message));
     } finally {
       setLoading(false);
     }
@@ -447,12 +437,7 @@ export default function InvoiceManagement() {
   const handleSetMisaToken = async (values) => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE}/misa/set-token`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(values)
-      });
-      const data = await res.json();
+      const data = await setMisaToken(values);
       if (data.success) {
         message.success('Cập nhật Token MISA AMIS thành công!');
         setIsMisaModalVisible(false);
@@ -461,7 +446,7 @@ export default function InvoiceManagement() {
         message.error(data.message || 'Lỗi cập nhật');
       }
     } catch (err) {
-      message.error('Lỗi: ' + err.message);
+      message.error('Lỗi: ' + (err.response?.data?.message || err.message));
     } finally {
       setLoading(false);
     }
@@ -471,10 +456,7 @@ export default function InvoiceManagement() {
   const handleDownloadXml = async (record) => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE}/gdt/download-xml/${record._id}`, {
-        method: 'POST'
-      });
-      const data = await res.json();
+      const data = await downloadXmlFromGdt(record._id);
       if (data.success) {
         message.success('Đã tải và lưu XML gốc thành công!');
         setSelectedInvoice(data.invoice);
@@ -484,7 +466,7 @@ export default function InvoiceManagement() {
         message.error(data.message || 'Không thể tải XML');
       }
     } catch (err) {
-      message.error('Lỗi tải XML: ' + err.message);
+      message.error('Lỗi tải XML: ' + (err.response?.data?.message || err.message));
     } finally {
       setLoading(false);
     }
@@ -510,15 +492,10 @@ export default function InvoiceManagement() {
       const record = pending[i];
       try {
         message.loading({ content: `Đang đẩy ${i + 1}/${pending.length}: HĐ ${record.shdon}...`, key, duration: 0 });
-        const res = await fetch(`${API_BASE}/misa/pu-voucher`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            invoiceId: record._id,
-            vendorId: 'GUID_NHA_CUNG_CAP_MISA'
-          })
+        const data = await pushPuVoucherToMisa({
+          invoiceId: record._id,
+          vendorId: 'GUID_NHA_CUNG_CAP_MISA',
         });
-        const data = await res.json();
         if (data.success) {
           successCount++;
         } else {
@@ -527,7 +504,7 @@ export default function InvoiceManagement() {
         }
       } catch (err) {
         failCount++;
-        console.error(`[Push MISA] HĐ ${record.shdon} lỗi:`, err.message);
+        console.error(`[Push MISA] HĐ ${record.shdon} lỗi:`, err.response?.data?.message || err.message);
       }
     }
 
@@ -707,7 +684,7 @@ export default function InvoiceManagement() {
         </div>
 
         <Space>
-          <Button icon={<ReloadOutlined />} onClick={fetchDashboardStatus} loading={loading}>
+          <Button icon={<ReloadOutlined />} onClick={() => fetchDashboardStatus(true)} loading={loading}>
             Làm mới
           </Button>
           <Button icon={<KeyOutlined />} onClick={() => setIsTokenModalVisible(true)}>
